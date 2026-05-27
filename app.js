@@ -2990,7 +2990,14 @@ async function handleFile(file, isBase) {
       State.baseData=data;
       State.baseFilename=file.name;
       document.getElementById('baseLoadedLabel').textContent='✓';
-      await DB.upload(data, true);
+      try {
+        await DB.upload(data, true);
+        localStorage.removeItem('saved_base_data'); // Clear local fallback if successful
+      } catch (dbErr) {
+        console.warn('DB upload failed, using local storage fallback:', dbErr);
+        localStorage.setItem('saved_base_data', JSON.stringify(data));
+        UI.toast('Salvo localmente (Banco de dados offline/indisponível)','warning');
+      }
       localStorage.setItem('baseFilename', file.name);
       UI.toast(`✓ Ano base: ${data.length.toLocaleString('pt-BR')} atendimentos`,'info');
     } else {
@@ -3001,7 +3008,14 @@ async function handleFile(file, isBase) {
       document.getElementById('filterMonth').value='all';
       document.getElementById('filterSpecialty').value='all';
       document.getElementById('currentLoadedLabel').textContent='✓';
-      await DB.upload(data, false);
+      try {
+        await DB.upload(data, false);
+        localStorage.removeItem('saved_current_data'); // Clear local fallback if successful
+      } catch (dbErr) {
+        console.warn('DB upload failed, using local storage fallback:', dbErr);
+        localStorage.setItem('saved_current_data', JSON.stringify(data));
+        UI.toast('Salvo localmente (Banco de dados offline/indisponível)','warning');
+      }
       localStorage.setItem('currentFilename', file.name);
       UI.populateFilters(data);
       UI.updatePeriod(data, '');
@@ -3088,7 +3102,18 @@ function setup() {
     if (confirm('Tem certeza que deseja apagar todos os dados salvos no sistema? Isso recomeçará a tela de upload.')) {
       UI.loading(true, 'Limpando banco de dados...');
       try {
-        await DB.clear();
+        try {
+          await DB.clear();
+        } catch (e) {
+          console.warn('Failed to clear database on server, clearing locally:', e);
+        }
+        
+        // Always clear localStorage fallbacks
+        localStorage.removeItem('saved_current_data');
+        localStorage.removeItem('saved_base_data');
+        localStorage.removeItem('currentFilename');
+        localStorage.removeItem('baseFilename');
+
         State.data = null;
         State.filtered = null;
         State.baseData = null;
@@ -3118,7 +3143,26 @@ function setup() {
 async function loadSavedData() {
   UI.loading(true, 'Buscando dados salvos...');
   try {
-    const res = await DB.get();
+    let res = null;
+    try {
+      res = await DB.get();
+    } catch (e) {
+      console.warn('Failed to fetch from DB, attempting local storage fallback:', e);
+    }
+    
+    // Check if we need local fallback
+    if (!res || !res.current || res.current.length === 0) {
+      const localCurrent = localStorage.getItem('saved_current_data');
+      const localBase = localStorage.getItem('saved_base_data');
+      if (localCurrent) {
+        res = {
+          current: JSON.parse(localCurrent),
+          base: localBase ? JSON.parse(localBase) : []
+        };
+        console.log('Successfully loaded data from local fallback storage');
+      }
+    }
+
     if (res && res.current && res.current.length > 0) {
       // Reconstruct Date objects from serialized string
       const data = res.current.map(d => ({ ...d, date: new Date(d.date) }));

@@ -604,12 +604,12 @@ input,select,button{font-family:inherit;}
     gap: 12px;
   }
   .header-controls {
-    gap: 6px;
+    gap: 8px;
   }
   .filter-select {
     padding: 6px 10px;
     font-size: 12.5px;
-    max-width: 160px;
+    max-width: 150px;
   }
   .btn-upload-header {
     padding: 6px 10px;
@@ -621,53 +621,62 @@ input,select,button{font-family:inherit;}
   }
 }
 
-@media (max-width: 1440px) {
+@media (max-width: 1480px) {
   .header-subtitle {
-    display: none; /* Hide brand subtitle to save significant space */
+    display: none !important; /* Hide brand subtitle to save significant space */
   }
-  .filter-select {
-    max-width: 140px;
-  }
-}
-
-@media (max-width: 1360px) {
   .period-badge {
     display: none !important; /* Hide period badge earlier as it is already shown in page info bar */
   }
   .btn-upload-header span.btn-txt {
-    display: none; /* Hide button text to keep it ultra compact */
+    display: none !important; /* Hide button text to keep it ultra compact */
   }
   .btn-upload-header svg {
     margin-right: 0;
   }
   .btn-action span.btn-txt {
-    display: none; /* Hide button text for action buttons */
+    display: none !important; /* Hide button text for action buttons */
   }
   .btn-action svg {
     margin-right: 0;
   }
   .actions-group {
-    margin-left: 6px;
-    padding-left: 6px;
-    gap: 6px;
+    margin-left: 4px;
+    padding-left: 4px;
+    gap: 4px;
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .user-details {
     display: none !important; /* Hide user avatar details earlier */
   }
   .filter-select {
     max-width: 120px;
   }
+  .header-controls {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .filter-select {
+    padding: 5px 8px;
+    font-size: 12px;
+    max-width: 100px;
+  }
+  .app-header {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 960px) {
   .app-header {
     height: auto !important;
-    padding: 12px 16px !important;
+    min-height: var(--header-h);
+    padding: 10px 16px !important;
     flex-wrap: wrap !important;
-    gap: 12px !important;
+    gap: 10px !important;
   }
   .header-brand {
     width: 100% !important;
@@ -675,9 +684,10 @@ input,select,button{font-family:inherit;}
   }
   .header-controls {
     width: 100% !important;
-    justify-content: space-between !important;
+    justify-content: flex-end !important;
     flex-wrap: wrap !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 }
+
 

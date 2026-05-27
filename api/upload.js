@@ -26,11 +26,31 @@ module.exports = async (req, res) => {
       // Start transaction
       await client.query('BEGIN');
 
-      // 1. Delete existing rows for this specific type (current vs base)
+      // 1. Ensure table and modern columns exist (dynamic migration)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS atendimentos (
+          id VARCHAR,
+          name VARCHAR,
+          dow VARCHAR,
+          date TIMESTAMPTZ,
+          month INT,
+          day INT,
+          year INT,
+          specialty VARCHAR,
+          entry_hour INT,
+          wait_time INT,
+          stay_time INT,
+          is_base BOOLEAN
+        );
+      `);
+      await client.query('ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS id VARCHAR');
+      await client.query('ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS name VARCHAR');
+
+      // 2. Delete existing rows for this specific type (current vs base)
       await client.query('DELETE FROM atendimentos WHERE is_base = $1', [isBase]);
 
       if (data.length > 0) {
-        // 2. Prepare arrays for high-performance UNNEST batch insertion
+        // 3. Prepare arrays for high-performance UNNEST batch insertion
         const ids = [];
         const names = [];
         const dows = [];
@@ -45,7 +65,7 @@ module.exports = async (req, res) => {
         const isBases = Array(data.length).fill(isBase);
 
         data.forEach(d => {
-          ids.push(d.id);
+          ids.push(d.id || null);
           names.push(d.name || 'PACIENTE ANÔNIMO');
           dows.push(d.dow || '');
           dates.push(d.date ? new Date(d.date).toISOString() : null);
@@ -58,10 +78,10 @@ module.exports = async (req, res) => {
           stayTimes.push(d.stayTime !== null && d.stayTime !== undefined ? parseInt(d.stayTime, 10) : null);
         });
 
+        // 4. Perform standard batch insert without strict unique constraints (which could fail ON CONFLICT)
         const insertQuery = `
           INSERT INTO atendimentos (id, name, dow, date, month, day, year, specialty, entry_hour, wait_time, stay_time, is_base)
-          SELECT * FROM UNNEST($1::varchar[], $2::varchar[], $3::varchar[], $4::timestamptz[], $5::int[], $6::int[], $7::int[], $8::varchar[], $9::int[], $10::int[], $11::int[], $12::boolean[])
-          ON CONFLICT (id, is_base) DO NOTHING;
+          SELECT * FROM UNNEST($1::varchar[], $2::varchar[], $3::varchar[], $4::timestamptz[], $5::int[], $6::int[], $7::int[], $8::varchar[], $9::int[], $10::int[], $11::int[], $12::boolean[]);
         `;
 
         const values = [
