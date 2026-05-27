@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VitalFlow PS — Vitalliz Engenharia de Dados</title>
+  <meta name="description" content="Dashboard de Gestão de Tempos do Pronto Socorro com IA Preditiva — Vitalliz Engenharia de Dados." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="login-page">
+  <div class="login-bg">
+    <div class="login-orb login-orb-1"></div>
+    <div class="login-orb login-orb-2"></div>
+    <div class="login-grid"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 12h3l3-9 4 18 3-12h5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="login-brand-text">
+        <span class="login-product-name">VitalFlow PS</span>
+        <span class="login-company-name">Vitalliz — Engenharia de Dados</span>
+      </div>
+    </div>
+    <div class="login-divider"></div>
+    <h1 class="login-title">Acesso ao Sistema</h1>
+    <p class="login-subtitle">Dashboard de Gestão de Tempos · Pronto Socorro</p>
+    <form id="loginForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="loginUsername">Usuário</label>
+        <input id="loginUsername" type="text" class="form-input" placeholder="Digite seu usuário" autocomplete="username" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="loginPassword">Senha</label>
+        <input id="loginPassword" type="password" class="form-input" placeholder="Digite sua senha" autocomplete="current-password" required />
+      </div>
+      <div id="loginError" class="login-error hidden">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Usuário ou senha incorretos
+      </div>
+      <button id="loginBtn" type="submit" class="btn-login">
+        <span class="btn-login-text">Entrar</span>
+        <span class="btn-login-spinner hidden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="spin-icon"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" stroke-width="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/></svg></span>
+      </button>
+    </form>
+    <div class="login-footer">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Acesso seguro · VitalFlow PS v2.0 Intelligence
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="loading-spinner"></div>
+  <p class="loading-text" id="loadingText">Processando dados...</p>
+</div>
+
+<!-- APP PAGE -->
+<div id="appPage" class="app-page hidden">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 12h3l3-9 4 18 3-12h5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="header-text">
+        <span class="header-product">VitalFlow PS <span class="header-badge-ai">IA</span></span>
+        <span class="header-subtitle">Gestão de Tempos · Pronto Socorro</span>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <div class="period-badge" id="periodBadge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Sem dados
+      </div>
+
+      <select id="filterMonth" class="filter-select"><option value="all">Todos os Meses</option></select>
+      <select id="filterSpecialty" class="filter-select"><option value="all">Todas as Especialidades</option></select>
+
+      <!-- Multi-CSV Upload buttons -->
+      <div class="upload-group">
+        <button id="btnUploadCurrent" class="btn-upload-header btn-upload-current" title="Carregar dados do período atual">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="btn-txt">Atual</span> <span id="currentLoadedLabel" class="file-label"></span>
+        </button>
+        <button id="btnUploadBase" class="btn-upload-header btn-upload-base" title="Carregar ano base para comparação">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="btn-txt">Ano Base</span> <span id="baseLoadedLabel" class="file-label"></span>
+        </button>
+      </div>
+
+      <div class="actions-group">
+        <button id="btnSimulator" class="btn-action btn-sim" title="Simular Metas" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="btn-txt">Simulador</span>
+        </button>
+        <button id="btnExportPDF" class="btn-action btn-pdf" title="Exportar Relatório" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="btn-txt">PDF</span>
+        </button>
+        <button id="btnClearDB" class="btn-action" title="Limpar todos os dados salvos" style="background: rgba(239, 68, 68, 0.15); color: var(--danger); display: none; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="btn-txt">Limpar</span>
+        </button>
+      </div>
+
+      <input type="file" id="fileInputCurrent" accept=".csv" style="display:none" />
+      <input type="file" id="fileInputBase"    accept=".csv" style="display:none" />
+
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-details">
+          <span class="user-name-text" id="userName">—</span>
+          <span class="user-role-text" id="userRole">—</span>
+        </div>
+      </div>
+      <button id="btnLogout" class="btn-logout" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- UPLOAD STATE -->
+    <div id="uploadState" class="upload-state">
+      <div class="upload-prompt" id="uploadDropZone">
+        <div class="upload-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="url(#g1)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 8 12 3 7 8" stroke="url(#g1)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="url(#g1)" stroke-width="1.5" stroke-linecap="round"/><defs><linearGradient id="g1" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6366F1"/><stop offset="100%" stop-color="#10B981"/></linearGradient></defs></svg>
+        </div>
+        <h3>Carregar Dados de Atendimento</h3>
+        <p>Selecione ou arraste o arquivo <strong>tempos_atendimento_sus.csv</strong></p>
+        <p class="upload-hint">Opcionalmente carregue também o ano anterior para comparação YoY e forecasting</p>
+        <div class="upload-btns-row">
+          <button class="btn-upload-prompt btn-upload-prompt-primary" id="btnUploadPromptCurrent">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Período Atual (obrigatório)
+          </button>
+          <button class="btn-upload-prompt btn-upload-prompt-secondary" id="btnUploadPromptBase">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Ano Base (opcional)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD CONTENT -->
+    <div id="dashboardContent" class="hidden">
+
+      <!-- DATA INFO BAR -->
+      <div class="data-info-bar">
+        <span id="dataInfo">Carregando...</span>
+        <div class="info-bar-right">
+          <span id="compareModeBadge" class="compare-badge hidden">⚖ Modo Comparativo YoY</span>
+          <span class="anahp-badge">⚕ Métricas ANAHP</span>
+        </div>
+      </div>
+
+      <!-- ==================== SCORE OEE ==================== -->
+      <section class="oee-section">
+        <div class="oee-card">
+          <!-- Gauge -->
+          <div class="oee-gauge-wrap">
+            <canvas id="oeeGauge" width="180" height="100"></canvas>
+            <div class="oee-gauge-value">
+              <span id="oeeScore">—</span>
+              <span class="oee-unit">/100</span>
+            </div>
+          </div>
+
+          <!-- Info: class + breakdown + tip side by side -->
+          <div class="oee-info">
+            <div class="oee-class-col">
+              <div class="oee-label">Score de Eficiência<br>Operacional</div>
+              <div class="oee-class-row">
+                <span class="oee-class-badge" id="oeeClassBadge">—</span>
+                <span class="oee-delta" id="oeeDelta"></span>
+              </div>
+            </div>
+
+            <div class="oee-breakdown">
+              <div class="oee-bar-item">
+                <span>Conformidade (40%)</span>
+                <div class="mini-bar"><div class="mini-bar-fill" id="oeeBar1"></div></div>
+                <span id="oeeVal1">—</span>
+              </div>
+              <div class="oee-bar-item">
+                <span>Tempo vs Meta (35%)</span>
+                <div class="mini-bar"><div class="mini-bar-fill" id="oeeBar2"></div></div>
+                <span id="oeeVal2">—</span>
+              </div>
+              <div class="oee-bar-item">
+                <span>Permanência (25%)</span>
+                <div class="mini-bar"><div class="mini-bar-fill" id="oeeBar3"></div></div>
+                <span id="oeeVal3">—</span>
+              </div>
+            </div>
+
+            <div class="oee-tip" id="oeeTip">Carregue os dados para calcular o score.</div>
+          </div>
+        </div>
+
+        <!-- 6 KPI CARDS -->
+        <div class="kpi-grid">
+
+          <div class="kpi-card status-neutral" id="kpiWait">
+            <div class="kpi-status-dot"></div>
+            <div class="kpi-icon">⏱</div>
+            <div class="kpi-label">Tempo Médio Ficha → Médico</div>
+            <div class="kpi-value" id="kpiWaitValue">—</div>
+            <div class="kpi-target" id="kpiWaitTarget">Meta ANAHP: ≤ 30min</div>
+            <div class="kpi-delta hidden" id="kpiWaitDelta"></div>
+          </div>
+
+          <div class="kpi-card status-neutral" id="kpiCompliance">
+            <div class="kpi-status-dot"></div>
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-label">Conformidade ≤ 30min</div>
+            <div class="kpi-value" id="kpiComplianceValue">—</div>
+            <div class="kpi-target" id="kpiComplianceTarget">Meta ANAHP: ≥ 80%</div>
+            <div class="kpi-delta hidden" id="kpiComplianceDelta"></div>
+          </div>
+
+          <div class="kpi-card status-neutral" id="kpiStay">
+            <div class="kpi-status-dot"></div>
+            <div class="kpi-icon">🏥</div>
+            <div class="kpi-label">Permanência Média Total</div>
+            <div class="kpi-value" id="kpiStayValue">—</div>
+            <div class="kpi-target" id="kpiStayTarget">Meta: ≤ 4h 00min</div>
+            <div class="kpi-delta hidden" id="kpiStayDelta"></div>
+          </div>
+
+          <div class="kpi-card status-neutral" id="kpiVolume">
+            <div class="kpi-status-dot"></div>
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-label">Total de Atendimentos</div>
+            <div class="kpi-value" id="kpiVolumeValue">—</div>
+            <div class="kpi-target" id="kpiVolumeTarget">Média diária: —</div>
+            <div class="kpi-delta hidden" id="kpiVolumeDelta"></div>
+          </div>
+
+          <div class="kpi-card status-neutral" id="kpiPeak">
+            <div class="kpi-status-dot"></div>
+            <div class="kpi-icon">📈</div>
+            <div class="kpi-label">Horário de Pico</div>
+            <div class="kpi-value" id="kpiPeakValue">—</div>
+            <div class="kpi-target" id="kpiPeakTarget">Concentração de demanda</div>
+          </div>
+
+          <div class="kpi-card status-neutral" id="kpiBestMonth">
+            <div class="kpi-status-dot"></div>
+            <div class="kpi-icon">🏆</div>
+            <div class="kpi-label">Melhor Mês</div>
+            <div class="kpi-value" id="kpiBestMonthValue">—</div>
+            <div class="kpi-target" id="kpiBestMonthTarget">Menor tempo médio</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==================== SMART REPORT ==================== -->
+      <section class="report-section" id="reportSection">
+        <div class="report-card">
+          <div class="report-header">
+            <div class="report-title-row">
+              <span class="report-icon">🧠</span>
+              <div>
+                <h3>Intelligence Report</h3>
+                <p>Análise automática gerada pelo VitalFlow Intelligence Engine</p>
+              </div>
+            </div>
+            <button class="btn-print" id="btnPrintReport">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Exportar Relatório
+            </button>
+          </div>
+          <div class="report-body" id="reportBody">
+            <p class="report-placeholder">Carregue os dados para gerar o relatório automático...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROW 1: Monthly Trend + Specialty + Pareto -->
+      <section class="charts-row charts-row-3">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h3>Tendência Mensal</h3>
+              <p>Tempo médio e conformidade ANAHP · <span id="chartMonthlySubtitle">período atual</span></p>
+            </div>
+            <div class="chart-badge chart-badge-blue" id="trendBadge">—</div>
+          </div>
+          <div class="chart-body">
+            <canvas id="chartMonthly"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h3>Desempenho por Especialidade</h3>
+              <p>Tempo médio ficha → médico</p>
+            </div>
+          </div>
+          <div class="chart-body">
+            <canvas id="chartSpecialty"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h3>Pareto 80/20 de Atrasos</h3>
+              <p>Especialidades que mais impactam no atraso acumulado</p>
+            </div>
+            <div class="chart-badge chart-badge-amber">80/20</div>
+          </div>
+          <div class="chart-body">
+            <canvas id="chartPareto"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROW 2: YoY Comparison (visible only in compare mode) -->
+      <section class="charts-row charts-row-1 yoy-section hidden" id="yoySection">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h3>Comparação Ano a Ano (YoY)</h3>
+              <p>Tempo médio mensal — Ano Base vs Período Atual · Barras agrupadas</p>
+            </div>
+            <div class="chart-badge chart-badge-purple">⚖ YoY</div>
+          </div>
+          <div class="chart-body chart-body-tall">
+            <canvas id="chartYoY"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROW 3: Scorecard Evolutivo (full width) -->
+      <section class="charts-row charts-row-1">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h3>Scorecard Mensal Evolutivo</h3>
+              <p>Monitoramento de indicadores M-o-M (Month-over-Month) — evolução das metas ANAHP</p>
+            </div>
+            <div class="chart-badge chart-badge-blue">M-o-M</div>
+          </div>
+          <div id="scorecardTable" class="table-container scorecard-wrapper"></div>
+        </div>
+      </section>
+
+      <!-- ROW 4: Heatmap + Distribution -->
+      <section class="charts-row charts-row-2">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>Mapa de Calor de Demanda</h3><p>Concentração de atendimentos por hora × dia da semana</p></div>
+          </div>
+          <div id="heatmapContainer" class="heatmap-container"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>Distribuição dos Tempos de Espera</h3><p>% atendimentos por faixa · Verde ≤ 30min · Vermelho > 60min</p></div>
+          </div>
+          <div class="chart-body"><canvas id="chartDistribution"></canvas></div>
+        </div>
+      </section>
+
+      <!-- ROW 4: Annual Calendar -->
+      <section class="charts-row charts-row-1">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <h3>Calendário Anual de Performance</h3>
+              <p>Tempo médio de espera por dia — Verde = meta atingida · Vermelho = crítico</p>
+            </div>
+            <div class="calendar-legend">
+              <span class="cal-leg cal-leg-good">≤ 30min</span>
+              <span class="cal-leg cal-leg-warn">31–60min</span>
+              <span class="cal-leg cal-leg-bad">&gt; 60min</span>
+              <span class="cal-leg cal-leg-none">Sem dados</span>
+            </div>
+          </div>
+          <div id="annualCalendar" class="annual-calendar"></div>
+        </div>
+      </section>
+
+      <!-- ROW 5: Forecasting (full width) -->
+      <section class="charts-row charts-row-1">
+        <div class="chart-card forecast-card">
+          <div class="chart-header">
+            <div>
+              <h3>🔮 Previsão de Demanda — Próximos 30 Dias</h3>
+              <p>Modelo preditivo com decomposição sazonal · Bandas de confiança 80%</p>
+            </div>
+            <div class="forecast-risk-badges" id="forecastRiskBadges"></div>
+          </div>
+          <div class="chart-body chart-body-tall"><canvas id="chartForecast"></canvas></div>
+        </div>
+      </section>
+
+      <!-- ROW 6: Daily Evolution (full width) -->
+      <section class="charts-row charts-row-1">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>Evolução Diária</h3><p>Volume de atendimentos e tempo médio de espera dia a dia</p></div>
+            <div class="chart-badge chart-badge-amber" id="dailyBadge">—</div>
+          </div>
+          <div class="chart-body chart-body-tall"><canvas id="chartDaily"></canvas></div>
+        </div>
+      </section>
+
+      <!-- ROW 7: Weekday + Anomalies -->
+      <section class="charts-row charts-row-2">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>Análise por Dia da Semana</h3><p>Tempo médio e volume acumulado por dia</p></div>
+          </div>
+          <div class="chart-body"><canvas id="chartWeekday"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>🔴 Anomalias Detectadas</h3><p>Dias que fogem estatisticamente do padrão (Z-score > 2σ)</p></div>
+            <span class="anomaly-count-badge" id="anomalyCount">—</span>
+          </div>
+          <div id="anomalyTable" class="table-container"></div>
+        </div>
+      </section>
+
+      <!-- ROW 8: Capacity Planning + Worst Days -->
+      <section class="charts-row charts-row-2">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>⚡ Planejamento de Capacidade</h3><p>Demanda esperada por turno e dia da semana — baseado no histórico</p></div>
+            <select id="capacitySeasonFactor" class="filter-select" style="padding: 5px 10px; font-size: 11px; height: 32px;" title="Selecione o fator de estresse sazonal para simular o inverno">
+              <option value="1.0">Fator: Normal (1.0x)</option>
+              <option value="1.15">Fator: Pré-Inverno (+15%)</option>
+              <option value="1.30">Fator: Pico Inverno (+30%)</option>
+              <option value="1.50">Fator: Surto Epidêmico (+50%)</option>
+            </select>
+          </div>
+          <div id="capacityGrid" class="capacity-container"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><h3>Top 10 Dias Críticos</h3><p>Dias com maior tempo médio de espera no período</p></div>
+          </div>
+          <div id="worstDaysTable" class="table-container"></div>
+        </div>
+      <!-- ROW 9: Auditoria e Rastreabilidade Operacional (Drilldown de Pacientes) -->
+      <section class="charts-row charts-row-1" style="margin-bottom: 24px;">
+        <div class="chart-card" id="auditCard">
+          <div class="chart-header" style="flex-wrap: wrap; gap: 12px; align-items: center;">
+            <div style="flex: 1; min-width: 250px;">
+              <h3 style="display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Auditoria de Atendimentos (Drilldown de Pacientes)
+              </h3>
+              <p>Rastreabilidade individual de atendimentos no período selecionado</p>
+            </div>
+            
+            <!-- Local controls -->
+            <div class="audit-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <input type="text" id="auditSearchInput" placeholder="Buscar paciente por nome..." class="filter-select" style="width: 220px; padding: 0 12px; height: 32px;" title="Digite o nome do paciente para filtrar instantaneamente">
+              
+              <div class="audit-filters-group" style="display: flex; gap: 4px; background: rgba(30, 41, 59, 0.40); border: 1px solid rgba(148, 163, 184, 0.12); padding: 3px; border-radius: 6px;">
+                <button id="btnAuditAll" class="audit-filter-btn active">Todos</button>
+                <button id="btnAuditWarn" class="audit-filter-btn">> 30min</button>
+                <button id="btnAuditCritical" class="audit-filter-btn">> 60min</button>
+              </div>
+              
+              <span class="audit-count-badge" id="auditCount">— registros</span>
+            </div>
+          </div>
+          
+          <div class="table-container" style="max-height: none; overflow: visible;">
+            <table class="data-table" id="auditTable">
+              <thead>
+                <tr>
+                  <th>Paciente</th>
+                  <th>Entrada (Data/Hora)</th>
+                  <th>Especialidade</th>
+                  <th>Tempo Fila</th>
+                  <th>Permanência Total</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Pagination -->
+          <div class="audit-pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 4px; border-top: 1px solid rgba(148, 163, 184, 0.08); margin-top: 8px;">
+            <div class="audit-pagination-info" id="auditPaginationInfo" style="font-size: 11px; color: #94A3B8;">
+              Exibindo 0-0 de 0 registros
+            </div>
+            <div class="audit-pagination-btns" style="display: flex; gap: 6px;">
+              <button id="btnAuditPrev" class="audit-page-btn">Anterior</button>
+              <button id="btnAuditNext" class="audit-page-btn">Próxima</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /dashboardContent -->
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-left">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 12h3l3-9 4 18 3-12h5" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      VitalFlow PS © 2026 — Vitalliz Engenharia de Dados
+    </div>
+    <div class="footer-right">Fonte: SUS · Métricas alinhadas ANAHP · Intelligence Engine v2.0</div>
+  </footer>
+
+</div><!-- /appPage -->
+
+<!-- SIMULATOR MODAL -->
+<div id="simulatorModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Simulador de Metas Interativo
+      </div>
+      <button class="modal-close" id="btnCloseSimulator">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Ajuste os parâmetros abaixo para projetar o impacto nas métricas gerais e no Score de Eficiência Operacional (OEE).</p>
+      
+      <div class="sim-grid">
+        <!-- Sliders Column -->
+        <div class="sim-controls">
+          <div class="sim-control-group">
+            <div class="sim-label-row">
+              <label>Redução de Tempo de Espera (Geral)</label>
+              <span id="simValWait" class="sim-val-badge">0%</span>
+            </div>
+            <input type="range" id="simSlideWait" min="-50" max="50" value="0" class="sim-slider" />
+            <div class="sim-hints"><span>Melhoria (-50%)</span><span>Piora (+50%)</span></div>
+          </div>
+
+          <div class="sim-control-group">
+            <div class="sim-label-row">
+              <label>Redução no Tempo de Permanência</label>
+              <span id="simValStay" class="sim-val-badge">0%</span>
+            </div>
+            <input type="range" id="simSlideStay" min="-50" max="50" value="0" class="sim-slider" />
+            <div class="sim-hints"><span>Melhoria (-50%)</span><span>Piora (+50%)</span></div>
+          </div>
+          
+          <button class="btn-sim-reset" id="btnResetSimulator">Restaurar Valores Originais</button>
+        </div>
+
+        <!-- Preview Column -->
+        <div class="sim-preview">
+          <div class="oee-gauge-wrap" style="transform: scale(0.9); transform-origin: top center; margin-bottom: 10px;">
+            <canvas id="simOeeGauge" width="180" height="100"></canvas>
+            <div class="oee-gauge-value">
+              <span id="simOeeScore">—</span><span class="oee-unit">/100</span>
+            </div>
+          </div>
+          
+          <div class="sim-results">
+            <div class="sim-kpi">
+              <span class="sk-label">Espera Simulada:</span>
+              <span class="sk-val" id="simResWait">—</span>
+            </div>
+            <div class="sim-kpi">
+              <span class="sk-label">Permanência Simulada:</span>
+              <span class="sk-val" id="simResStay">—</span>
+            </div>
+            <div class="sim-kpi">
+              <span class="sk-label">Conformidade Simulada:</span>
+              <span class="sk-val" id="simResComp">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT DETAIL MODAL -->
+<div id="auditDetailModal" class="modal-overlay hidden">
+  <div class="modal-card" style="max-width: 650px;">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Ficha de Auditoria Operacional
+      </div>
+      <button class="modal-close" id="btnCloseAuditDetail" onclick="AuditPanel.closeModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding-top: 10px;">
+      <h4 id="auditPatientName" style="font-size: 16px; font-weight: 800; color: #F8FAFC; margin-bottom: 2px;">—</h4>
+      <p style="font-size: 11px; color: #94A3B8; margin-bottom: 20px;">
+        ID de Registro do SUS: <span id="auditPatientId" style="font-family: monospace; color: #6366F1; font-weight: 700;">—</span>
+      </p>
+      
+      <!-- Timeline Visual -->
+      <div class="audit-timeline-container" style="background: rgba(30, 41, 59, 0.35); border: 1px solid rgba(148, 163, 184, 0.08); border-radius: 10px; padding: 24px 20px; margin-bottom: 20px;">
+        <h5 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #94A3B8; margin-bottom: 20px; font-weight: 700;">Fluxograma do Atendimento</h5>
+        
+        <div class="timeline-row" style="display: flex; justify-content: space-between; position: relative; margin-top: 10px;">
+          <!-- Timeline Connecting Line -->
+          <div class="timeline-line" style="position: absolute; top: 12px; left: 10%; right: 10%; height: 3px; background: rgba(148, 163, 184, 0.15); z-index: 1;"></div>
+          <div id="timelineProgressLine" style="position: absolute; top: 12px; left: 10%; width: 0%; height: 3px; background: linear-gradient(90deg, #6366F1, #10B981); z-index: 2; transition: width 0.8s ease-in-out;"></div>
+          
+          <!-- Step 1: Entrada -->
+          <div class="timeline-step" style="flex: 1; text-align: center; z-index: 3; position: relative;">
+            <div class="timeline-dot" style="width: 26px; height: 26px; border-radius: 50%; background: #1E293B; border: 3px solid #6366F1; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(99,102,241,0.4);"><span style="width: 8px; height: 8px; border-radius: 50%; background: #6366F1;"></span></div>
+            <span style="font-weight: 700; color: #F8FAFC; display: block; font-size: 11px;">Entrada / Ficha</span>
+            <span class="timeline-time" id="timeStep1" style="font-size: 10px; color: #94A3B8; font-family: monospace;">—</span>
+          </div>
+          
+          <!-- Step 2: Consulta -->
+          <div class="timeline-step" style="flex: 1; text-align: center; z-index: 3; position: relative;">
+            <div class="timeline-dot" id="dotStep2" style="width: 26px; height: 26px; border-radius: 50%; background: #1E293B; border: 3px solid #64748B; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center;"><span id="subDotStep2" style="width: 8px; height: 8px; border-radius: 50%; background: #64748B;"></span></div>
+            <span id="labelStep2" style="font-weight: 700; color: #94A3B8; display: block; font-size: 11px;">Atendimento Médico</span>
+            <span class="timeline-time" id="timeStep2" style="font-size: 10px; color: #94A3B8; font-family: monospace;">—</span>
+          </div>
+          
+          <!-- Step 3: Alta -->
+          <div class="timeline-step" style="flex: 1; text-align: center; z-index: 3; position: relative;">
+            <div class="timeline-dot" id="dotStep3" style="width: 26px; height: 26px; border-radius: 50%; background: #1E293B; border: 3px solid #64748B; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center;"><span id="subDotStep3" style="width: 8px; height: 8px; border-radius: 50%; background: #64748B;"></span></div>
+            <span id="labelStep3" style="font-weight: 700; color: #94A3B8; display: block; font-size: 11px;">Alta / Conclusão</span>
+            <span class="timeline-time" id="timeStep3" style="font-size: 10px; color: #94A3B8; font-family: monospace;">—</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Cards de Contexto (2 Colunas) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <!-- Card 1: Diagnóstico de Anomalia Z-Score -->
+        <div class="card" style="background: rgba(30, 41, 59, 0.25); border: 1px solid rgba(148, 163, 184, 0.08); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; height: auto;">
+          <h5 style="font-size: 10.5px; text-transform: uppercase; color: #94A3B8; font-weight: 700; border-bottom: 1px solid rgba(148, 163, 184, 0.08); padding-bottom: 4px; margin-bottom: 4px;">Contexto Estatístico</h5>
+          
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="auditZscoreBadge" style="font-size: 20px; font-weight: 900; padding: 6px 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25);">—</div>
+            <div>
+              <span id="auditZscoreTitle" style="font-weight: 700; color: #F8FAFC; display: block; font-size: 11px;">Espera Normal</span>
+              <span id="auditZscoreDesc" style="font-size: 10px; color: #94A3B8; line-height: 1.3;">Tempo de espera dentro dos padrões normais do pronto socorro.</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 2: Carga da Sala de Espera -->
+        <div class="card" style="background: rgba(30, 41, 59, 0.25); border: 1px solid rgba(148, 163, 184, 0.08); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; height: auto;">
+          <h5 style="font-size: 10.5px; text-transform: uppercase; color: #94A3B8; font-weight: 700; border-bottom: 1px solid rgba(148, 163, 184, 0.08); padding-bottom: 4px; margin-bottom: 4px;">Carga no Turno</h5>
+          
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="auditCargaBadge" style="font-size: 20px; font-weight: 900; padding: 6px 12px; border-radius: 8px; background: rgba(99, 102, 241, 0.12); color: #6366F1; border: 1px solid rgba(99, 102, 241, 0.25);">—</div>
+            <div>
+              <span style="font-weight: 700; color: #F8FAFC; display: block; font-size: 11px;">Pacientes no Turno</span>
+              <span id="auditCargaDesc" style="font-size: 10px; color: #94A3B8; line-height: 1.3;">Quantidade de atendimentos na mesma especialidade e turno.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Detalhes Finais -->
+      <div style="margin-top: 16px; font-size: 10.5px; color: #94A3B8; border-top: 1px solid rgba(148, 163, 184, 0.08); padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; line-height: 1.5;">
+        <div>
+          <strong>Especialidade:</strong> <span id="auditPatientSpecialty" style="color: #F8FAFC;">—</span><br>
+          <strong>Dia da Semana:</strong> <span id="auditPatientDow" style="color: #F8FAFC;">—</span>
+        </div>
+        <div>
+          <strong>Tempo de Espera:</strong> <span id="auditPatientWait" style="color: #F8FAFC; font-weight: 700;">—</span><br>
+          <strong>Status de Meta ANAHP:</strong> <span id="auditPatientCompliance" style="font-weight: 700;">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

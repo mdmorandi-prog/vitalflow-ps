@@ -1,0 +1,16 @@
+{
+  "name": "vitalflow-ps",
+  "version": "3.0.0",
+  "description": "VitalFlow PS — Gestão e Inteligência de Tempos de Pronto Socorro",
+  "main": "app.js",
+  "scripts": {
+    "start": "echo 'Acesse index.html diretamente ou publique na Vercel'"
+  },
+  "dependencies": {
+    "pg": "^8.11.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}
