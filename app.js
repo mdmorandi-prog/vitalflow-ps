@@ -1628,15 +1628,6 @@ const OEE = {
     Charts.oeeGauge(oee.score);
     const badgeEl=document.getElementById('oeeClassBadge');
     if(badgeEl){ badgeEl.textContent=`Classe ${oee.cls}`; badgeEl.className=`oee-class-badge oee-class-${oee.cls}`; }
-    const tips={A:'Excelente! Mantenha o desempenho atual.',B:`Bom desempenho. Para atingir Classe A, reduza o tempo médio em ${U.fmtMin(Math.max(0,kpis.avgWait-CONFIG.ANAHP.waitTarget))}.`,C:'Atenção — múltiplos indicadores abaixo da meta. Revise a escala médica.',D:'Crítico — intervenção imediata recomendada. Considere revisão dos processos de triagem.'};
-    const tip=document.getElementById('oeeTip');
-    if(tip) tip.textContent=tips[oee.cls];
-    ['1','2','3'].forEach((n,i)=>{
-      const v=[oee.c1,oee.c2,oee.c3][i];
-      const bar=document.getElementById(`oeeBar${n}`); const val=document.getElementById(`oeeVal${n}`);
-      if(bar) bar.style.width=`${v}%`;
-      if(val) val.textContent=`${v.toFixed(0)}%`;
-    });
   },
 };
 
