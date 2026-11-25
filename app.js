@@ -2204,7 +2204,6 @@ const PrintEngine = {
       <thead>
         <tr>
           <th class="sc-ind">Indicador</th>
-          <th class="num sc-meta">Meta</th>
           ${monthlyStats.map(s => `<th class="num">${s.name}</th>`).join('')}
           <th class="num sc-tot">Período</th>
         </tr>
@@ -2212,25 +2211,21 @@ const PrintEngine = {
       <tbody>
         <tr>
           <td class="sc-ind"><strong>Tempo Médio Espera</strong></td>
-          <td class="num muted">&le; ${U.fmtMinShort(CONFIG.ANAHP.waitTarget)}</td>
           ${monthlyStats.map(s => s.avgWait !== null ? `<td class="num ${waitCls(s.avgWait)}">${U.fmtMinShort(s.avgWait)}</td>` : '<td class="num">—</td>').join('')}
           <td class="num ${waitCls(kpis.avgWait)}"><strong>${U.fmtMinShort(kpis.avgWait)}</strong></td>
         </tr>
         <tr>
           <td class="sc-ind"><strong>Conform. (&le; 30m)</strong></td>
-          <td class="num muted">&ge; ${CONFIG.ANAHP.complianceTarget}%</td>
           ${monthlyStats.map(s => `<td class="num ${compCls(s.compliance)}">${s.compliance.toFixed(1)}%</td>`).join('')}
           <td class="num ${compCls(kpis.compliance)}"><strong>${kpis.compliance.toFixed(1)}%</strong></td>
         </tr>
         <tr>
           <td class="sc-ind"><strong>Permanência Média</strong></td>
-          <td class="num muted">&le; ${U.fmtMinShort(CONFIG.ANAHP.stayTarget)}</td>
           ${monthlyStats.map(s => s.avgStay !== null ? `<td class="num ${stayCls(s.avgStay)}">${U.fmtMinShort(s.avgStay)}</td>` : '<td class="num">—</td>').join('')}
           <td class="num ${stayCls(kpis.avgStay)}"><strong>${U.fmtMinShort(kpis.avgStay)}</strong></td>
         </tr>
         <tr>
           <td class="sc-ind"><strong>Atendimentos</strong></td>
-          <td class="num muted">—</td>
           ${monthlyStats.map(s => `<td class="num">${s.volume.toLocaleString('pt-BR')}</td>`).join('')}
           <td class="num"><strong>${kpis.total.toLocaleString('pt-BR')}</strong></td>
         </tr>
@@ -2421,9 +2416,7 @@ const PrintEngine = {
       );
     }
 
-    const metaStatus = kpis.compliance >= CONFIG.ANAHP.complianceTarget
-      ? `A conformidade acumulada de <strong>${kpis.compliance.toFixed(1)}%</strong> atinge o patamar de referência ANAHP (&ge; 80% com espera &le; 30 min).`
-      : `A conformidade acumulada de <strong>${kpis.compliance.toFixed(1)}%</strong> está abaixo da referência ANAHP (&ge; 80% com espera &le; 30 min), indicando necessidade de ajuste de escala nos picos de demanda.`;
+    const metaStatus = `A conformidade acumulada no período registrou <strong>${kpis.compliance.toFixed(1)}%</strong> dos atendimentos com tempo de espera até 30 minutos.`;
     parts.push(metaStatus);
     return parts;
   },
@@ -2434,7 +2427,7 @@ const PrintEngine = {
     items.push({
       title: 'Status Geral do Período',
       type: statusType,
-      body: `Tempo médio de espera: <strong>${U.fmtMin(kpis.avgWait)}</strong> (Meta ANAHP: &le; 30 min). Conformidade: <strong>${kpis.compliance.toFixed(1)}%</strong>.`
+      body: `Tempo médio de espera: <strong>${U.fmtMin(kpis.avgWait)}</strong>. Conformidade: <strong>${kpis.compliance.toFixed(1)}%</strong>.`
     });
     if (kpis.bestMonth) {
       items.push({
@@ -3041,25 +3034,8 @@ const PrintEngine = {
       </div>
       <div class="oee-details">
         <div class="oee-top-row">
-          <span class="oee-title">Eficiência Operacional (OEE)</span>
+          <span class="oee-title">Eficiência Operacional</span>
           <span class="oee-badge">Classe ${oee.cls}</span>
-        </div>
-        <div class="oee-bars">
-          <div class="oee-bar-col">
-            <div>Conformidade (40%)</div>
-            <div class="oee-track"><div class="oee-fill" style="width:${oee.c1}%"></div></div>
-            <strong>${oee.c1.toFixed(0)}%</strong>
-          </div>
-          <div class="oee-bar-col">
-            <div>Tempo vs Meta (35%)</div>
-            <div class="oee-track"><div class="oee-fill" style="width:${oee.c2}%"></div></div>
-            <strong>${oee.c2.toFixed(0)}%</strong>
-          </div>
-          <div class="oee-bar-col">
-            <div>Permanência (25%)</div>
-            <div class="oee-track"><div class="oee-fill" style="width:${oee.c3}%"></div></div>
-            <strong>${oee.c3.toFixed(0)}%</strong>
-          </div>
         </div>
       </div>
     </div>
@@ -3068,17 +3044,14 @@ const PrintEngine = {
       <div class="kpi-box status-${kpis.avgWait <= 30 ? 'good' : kpis.avgWait <= 40 ? 'warn' : 'bad'}">
         <div class="kpi-label">Tempo Médio de Espera</div>
         <div class="kpi-val">${U.fmtMin(kpis.avgWait)}</div>
-        <div class="kpi-meta">Meta ANAHP: &le; 30 min</div>
       </div>
       <div class="kpi-box status-${kpis.compliance >= 80 ? 'good' : kpis.compliance >= 70 ? 'warn' : 'bad'}">
         <div class="kpi-label">Conformidade (&le; 30 min)</div>
         <div class="kpi-val">${kpis.compliance.toFixed(1)}%</div>
-        <div class="kpi-meta">Meta ANAHP: &ge; 80%</div>
       </div>
       <div class="kpi-box status-${kpis.avgStay <= 240 ? 'good' : kpis.avgStay <= 300 ? 'warn' : 'bad'}">
         <div class="kpi-label">Permanência Média</div>
         <div class="kpi-val">${U.fmtMin(kpis.avgStay)}</div>
-        <div class="kpi-meta">Meta: &le; ${U.fmtMin(CONFIG.ANAHP.stayTarget)}</div>
       </div>
       <div class="kpi-box status-neutral">
         <div class="kpi-label">Total de Atendimentos</div>
@@ -3098,7 +3071,7 @@ const PrintEngine = {
     </div>
 
     <div class="card">
-      <h3>1. Evolução Mensal de Indicadores (Referência ANAHP)</h3>
+      <h3>1. Evolução Mensal de Indicadores</h3>
       ${scorecardHTML}
     </div>
   </section>
