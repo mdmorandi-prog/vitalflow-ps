@@ -593,7 +593,10 @@ input, select, button { font-family: inherit; }
 }
 .bento-row { margin-bottom: 16px; }
 .bento-span-12 { grid-column: span 12; }
+.bento-span-8  { grid-column: span 8; }
+.bento-span-7  { grid-column: span 7; }
 .bento-span-6  { grid-column: span 6; }
+.bento-span-5  { grid-column: span 5; }
 .bento-span-4  { grid-column: span 4; }
 .bento-span-3  { grid-column: span 3; }
 
@@ -2020,7 +2023,10 @@ input, select, button { font-family: inherit; }
 }
 
 @media (max-width: 960px) {
+  .bento-span-8,
+  .bento-span-7,
   .bento-span-6,
+  .bento-span-5,
   .bento-span-4 { grid-column: span 12; }
   .bento-span-3 { grid-column: span 6; }
   .app-header {
