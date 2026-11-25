@@ -3306,22 +3306,16 @@ const UI = {
     document.getElementById('yoySection')?.classList[on?'remove':'add']('hidden');
   },
   updateKPIs(kpis, baseKpis) {
-    this._kpi('kpiTriageWait', kpis.avgTriageWait!==null?U.fmtMin(kpis.avgTriageWait):'—', 'Média Recepção', 'neutral',
-      baseKpis && baseKpis.avgTriageWait!==null ? kpis.avgTriageWait - baseKpis.avgTriageWait : null, 'min', true);
-    this._kpi('kpiTriageToDocWait', kpis.avgTriageToDocWait!==null?U.fmtMin(kpis.avgTriageToDocWait):'—', 'Média Espera Médica', 'neutral',
-      baseKpis && baseKpis.avgTriageToDocWait!==null ? kpis.avgTriageToDocWait - baseKpis.avgTriageToDocWait : null, 'min', true);
+    this._kpi('kpiTriageWait', kpis.avgTriageWait!==null?U.fmtMin(kpis.avgTriageWait):'—', 'Média Recepção', 'neutral', null);
+    this._kpi('kpiTriageToDocWait', kpis.avgTriageToDocWait!==null?U.fmtMin(kpis.avgTriageToDocWait):'—', 'Média Espera Médica', 'neutral', null);
 
-    this._kpi('kpiWait', U.fmtMin(kpis.avgWait), `Meta ANAHP: ≤ ${CONFIG.ANAHP.waitTarget}min`,
-      kpis.avgWait<=CONFIG.ANAHP.waitTarget?'good':kpis.avgWait<=40?'warn':'bad',
-      baseKpis ? kpis.avgWait - baseKpis.avgWait : null, 'min', true);
-    this._kpi('kpiCompliance', `${kpis.compliance.toFixed(1)}%`, `Meta ANAHP: ≥ ${CONFIG.ANAHP.complianceTarget}%`,
-      kpis.compliance>=CONFIG.ANAHP.complianceTarget?'good':kpis.compliance>=70?'warn':'bad',
-      baseKpis ? kpis.compliance - baseKpis.compliance : null, '%', false);
-    this._kpi('kpiStay', U.fmtMin(kpis.avgStay), `Meta: ≤ ${U.fmtMin(CONFIG.ANAHP.stayTarget)}`,
-      kpis.avgStay<=CONFIG.ANAHP.stayTarget?'good':kpis.avgStay<=300?'warn':'bad',
-      baseKpis ? kpis.avgStay - baseKpis.avgStay : null, 'min', true);
-    this._kpi('kpiVolume', kpis.total.toLocaleString('pt-BR'), `Média: ${kpis.avgDaily} at/dia · ${kpis.totalDays} dias`, 'neutral',
-      baseKpis ? kpis.total - baseKpis.total : null, '', false);
+    this._kpi('kpiWait', U.fmtMin(kpis.avgWait), '',
+      kpis.avgWait<=CONFIG.ANAHP.waitTarget?'good':kpis.avgWait<=40?'warn':'bad', null);
+    this._kpi('kpiCompliance', `${kpis.compliance.toFixed(1)}%`, '',
+      kpis.compliance>=CONFIG.ANAHP.complianceTarget?'good':kpis.compliance>=70?'warn':'bad', null);
+    this._kpi('kpiStay', U.fmtMin(kpis.avgStay), '',
+      kpis.avgStay<=CONFIG.ANAHP.stayTarget?'good':kpis.avgStay<=300?'warn':'bad', null);
+    this._kpi('kpiVolume', kpis.total.toLocaleString('pt-BR'), `Média: ${kpis.avgDaily} at/dia · ${kpis.totalDays} dias`, 'neutral', null);
     this._kpi('kpiPeak', kpis.peakHour!==null?`${String(kpis.peakHour).padStart(2,'0')}:00h`:'—', kpis.peakHour!==null?`${kpis.peakVol} atend. no pico`:'Sem dados', 'neutral', null);
     this._kpi('kpiBestMonth', kpis.bestMonth?CONFIG.MONTHS_SHORT[kpis.bestMonth.month-1]:'—', kpis.bestMonth?`Média: ${U.fmtMin(kpis.bestMonth.avg)}`:'—', 'good', null);
   },
@@ -3909,7 +3903,7 @@ const FlowPanel = {
     if (!el) return;
     el.textContent = val;
     el.closest?.('.kpi-card')?.classList.remove('status-good','status-warn','status-bad','status-neutral');
-    el.closest?.('.kpi-card')?.classList.add(good ? 'status-good' : bad ? 'status-bad' : 'status-warn');
+    el.closest?.('.kpi-card')?.classList.add('status-neutral');
   },
 
   render(kpis) {
@@ -3918,17 +3912,22 @@ const FlowPanel = {
     if (sv) {
       sv.textContent = kpis.avgSalaV !== null ? U.fmtMin(kpis.avgSalaV) : '—';
       const card = sv.closest('.kpi-card');
-      if (card && kpis.avgSalaV !== null) {
-        card.classList.remove('status-neutral','status-good','status-warn','status-bad');
-        card.classList.add(kpis.avgSalaV <= CONFIG.ANAHP.salaVermelhaTarget ? 'status-good' : 'status-bad');
+      if (card) {
+        card.classList.remove('status-good','status-warn','status-bad');
+        card.classList.add('status-neutral');
       }
       const sub = document.getElementById('kpiSalaVermelhaCount');
-      if (sub) sub.textContent = kpis.salaVCount > 0 ? `${kpis.salaVCount.toLocaleString('pt-BR')} casos · Conf. ${kpis.salaVCompliance ?? '—'}%` : 'Sem dados';
+      if (sub) sub.textContent = kpis.salaVCount > 0 ? `${kpis.salaVCount.toLocaleString('pt-BR')} casos` : 'Sem dados';
     }
 
     const sorot = document.getElementById('kpiSoroterapiaValue');
     if (sorot) {
       sorot.textContent = kpis.avgSorot !== null ? U.fmtMin(kpis.avgSorot) : '—';
+      const card = sorot.closest('.kpi-card');
+      if (card) {
+        card.classList.remove('status-good','status-warn','status-bad');
+        card.classList.add('status-neutral');
+      }
       const sub = document.getElementById('kpiSoroterapiaCount');
       if (sub) sub.textContent = kpis.sorotCount > 0 ? `${kpis.sorotCount.toLocaleString('pt-BR')} casos` : 'Sem dados';
     }
@@ -3937,12 +3936,12 @@ const FlowPanel = {
     if (sutura) {
       sutura.textContent = kpis.avgSutura !== null ? U.fmtMin(kpis.avgSutura) : '—';
       const card = sutura.closest('.kpi-card');
-      if (card && kpis.avgSutura !== null) {
-        card.classList.remove('status-neutral','status-good','status-warn','status-bad');
-        card.classList.add(kpis.avgSutura <= CONFIG.ANAHP.suturaTarget ? 'status-good' : 'status-bad');
+      if (card) {
+        card.classList.remove('status-good','status-warn','status-bad');
+        card.classList.add('status-neutral');
       }
       const sub = document.getElementById('kpiSuturaCount');
-      if (sub) sub.textContent = kpis.suturaCount > 0 ? `${kpis.suturaCount.toLocaleString('pt-BR')} casos · Conf. ${kpis.suturaCompliance ?? '—'}%` : 'Sem dados';
+      if (sub) sub.textContent = kpis.suturaCount > 0 ? `${kpis.suturaCount.toLocaleString('pt-BR')} casos` : 'Sem dados';
     }
 
     // ── Destination rate KPI cards ───────────────────────────────────
@@ -3953,9 +3952,9 @@ const FlowPanel = {
     if (evasion) {
       evasion.textContent = kpis.evasionRate !== null ? `${kpis.evasionRate}%` : '—';
       const card = evasion.closest('.kpi-card');
-      if (card && kpis.evasionRate !== null) {
-        card.classList.remove('status-neutral','status-good','status-warn','status-bad');
-        card.classList.add(kpis.evasionRate < 3 ? 'status-good' : kpis.evasionRate < 8 ? 'status-warn' : 'status-bad');
+      if (card) {
+        card.classList.remove('status-good','status-warn','status-bad');
+        card.classList.add('status-neutral');
       }
     }
 
@@ -3966,9 +3965,9 @@ const FlowPanel = {
     if (death) {
       death.textContent = kpis.deathRate !== null ? `${kpis.deathRate}%` : '—';
       const card = death.closest('.kpi-card');
-      if (card && kpis.deathRate !== null) {
-        card.classList.remove('status-neutral','status-good','status-warn','status-bad');
-        card.classList.add(kpis.deathRate < 0.5 ? 'status-good' : kpis.deathRate < 1.5 ? 'status-warn' : 'status-bad');
+      if (card) {
+        card.classList.remove('status-good','status-warn','status-bad');
+        card.classList.add('status-neutral');
       }
     }
 
