@@ -1528,7 +1528,7 @@ const DayDetailModal = {
       <div class="ddm-footer-actions">
         <button class="ddm-btn-filter" onclick="DayDetailModal.filterAudit()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 4h18M7 12h10M11 20h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          Ver atendimentos do dia na Auditoria
+          ${dateKey ? 'Ver atendimentos do dia na Auditoria' : 'Ver atendimentos do horário na Auditoria'}
         </button>
         <button class="ddm-btn-close" onclick="DayDetailModal.close()">
           Fechar
@@ -1538,24 +1538,23 @@ const DayDetailModal = {
 
     DayDetailModal._currentDayData = dayData;
     DayDetailModal._currentDateKey = dateKey;
+    DayDetailModal._currentDow = dow || null;
+    DayDetailModal._currentHour = (hour !== undefined && hour !== null) ? hour : null;
     modal.classList.remove('hidden');
   },
 
   filterAudit() {
     // Store filter intent and close modal, then scroll to audit section
     const key = DayDetailModal._currentDateKey;
+    const dow = DayDetailModal._currentDow;
+    const hour = DayDetailModal._currentHour;
     this.close();
-    if (!key) return;
-    // Scroll to audit panel
-    const auditCard = document.getElementById('auditCard');
-    if (auditCard) {
-      setTimeout(() => {
-        auditCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 200);
-    }
-    // Apply date filter by pre-filling search or using a custom day filter
-    if (AuditPanel && typeof AuditPanel.filterByDate === 'function') {
-      AuditPanel.filterByDate(key);
+    if (!key && (!dow || hour === null || hour === undefined)) return;
+
+    if (key && AuditPanel && typeof AuditPanel.filterByDate === 'function') {
+      AuditPanel.filterByDate(key, true);
+    } else if (dow && hour !== null && hour !== undefined && AuditPanel && typeof AuditPanel.filterBySlot === 'function') {
+      AuditPanel.filterBySlot(dow, hour, true);
     }
   },
 
@@ -1568,6 +1567,8 @@ const DayDetailModal = {
 
   _currentDayData: null,
   _currentDateKey: null,
+  _currentDow: null,
+  _currentHour: null,
 };
 
 const CapacityGrid = {
@@ -1622,8 +1623,9 @@ const AnomalyTable = {
     let html='<table class="data-table"><thead><tr><th>Data</th><th>Dia</th><th>Média</th><th>Desvio</th><th>Volume</th></tr></thead><tbody>';
     anom.forEach(d=>{
       const cls=d.z>3?'time-bad':'time-warn';
-      html+=`<tr class="${d.z>3?'row-critical':'row-warning'}">
-        <td>${U.fmtDate(d.date)}</td><td>${d.dow}</td>
+      const dk=U.dateKey(d);
+      html+=`<tr class="${d.z>3?'row-critical':'row-warning'}" style="cursor:pointer;" title="Clique para ver os atendimentos de ${U.fmtDate(d.date)} na Auditoria" onclick="AuditPanel.filterByDate('${dk}', true)">
+        <td><strong>${U.fmtDate(d.date)}</strong></td><td>${d.dow}</td>
         <td class="${cls}">${U.fmtMin(d.avg)}</td>
         <td class="anomaly-sigma">+${d.z.toFixed(2)}σ</td>
         <td>${d.volume}</td></tr>`;
@@ -1644,7 +1646,8 @@ const WorstTable = {
       const avg=Math.round(d.avg);
       const cls=avg>CONFIG.ANAHP.waitTarget*2?'time-bad':avg>CONFIG.ANAHP.waitTarget?'time-warn':'time-good';
       const row=avg>CONFIG.ANAHP.waitTarget*2?'row-critical':avg>CONFIG.ANAHP.waitTarget?'row-warning':'';
-      html+=`<tr class="${row}"><td class="rank-cell">${i+1}°</td><td>${U.fmtDate(d.date)}</td><td>${d.dow}</td><td class="${cls}">${U.fmtMin(d.avg)}</td><td>${d.volume}</td><td class="${d.compliance>=80?'time-good':d.compliance>=60?'time-warn':'time-bad'}">${d.compliance.toFixed(1)}%</td></tr>`;
+      const dk=U.dateKey(d);
+      html+=`<tr class="${row}" style="cursor:pointer;" title="Clique para ver os atendimentos de ${U.fmtDate(d.date)} na Auditoria" onclick="AuditPanel.filterByDate('${dk}', true)"><td class="rank-cell">${i+1}°</td><td><strong>${U.fmtDate(d.date)}</strong></td><td>${d.dow}</td><td class="${cls}">${U.fmtMin(d.avg)}</td><td>${d.volume}</td><td class="${d.compliance>=80?'time-good':d.compliance>=60?'time-warn':'time-bad'}">${d.compliance.toFixed(1)}%</td></tr>`;
     });
     html+='</tbody></table>';
     el.innerHTML=html;
@@ -3926,10 +3929,15 @@ const AuditPanel = {
     });
 
     return sorted.filter(d => {
-      // 0. Date filter (from DayDetailModal click)
+      // 0. Date filter (from Calendar / AnomalyTable / WorstTable click)
       if (this._dateFilter) {
         const k = U.dateKey(d);
         if (k !== this._dateFilter) return false;
+      }
+
+      // 0a. Slot filter (from Heatmap day-of-week + hour click)
+      if (this._slotFilter) {
+        if (d.dow !== this._slotFilter.dow || d.entryHour !== this._slotFilter.hour) return false;
       }
 
       // 0b. Local convenio filter
@@ -4317,7 +4325,8 @@ const AuditPanel = {
     }
   },
 
-  filterByDate(dateKey) {
+  filterByDate(dateKey, scroll = false) {
+    AuditPanel._slotFilter = null;
     AuditPanel._dateFilter = dateKey;
     // Show badge
     const badge = document.getElementById('auditDateFilterBadge');
@@ -4329,10 +4338,36 @@ const AuditPanel = {
     }
     AuditPanel.page = 1;
     AuditPanel.render();
+    if (scroll) {
+      setTimeout(() => {
+        document.getElementById('auditCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    }
+  },
+
+  filterBySlot(dow, hour, scroll = true) {
+    AuditPanel._dateFilter = null;
+    AuditPanel._slotFilter = { dow, hour };
+    const badge = document.getElementById('auditDateFilterBadge');
+    const label = document.getElementById('auditDateFilterLabel');
+    if (badge && label) {
+      const h1 = String(hour).padStart(2, '0');
+      const h2 = String(hour + 1).padStart(2, '0');
+      label.textContent = `${dow} · ${h1}h–${h2}h — Limpar`;
+      badge.classList.remove('hidden');
+    }
+    AuditPanel.page = 1;
+    AuditPanel.render();
+    if (scroll) {
+      setTimeout(() => {
+        document.getElementById('auditCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    }
   },
 
   clearDateFilter() {
     AuditPanel._dateFilter = null;
+    AuditPanel._slotFilter = null;
     const badge = document.getElementById('auditDateFilterBadge');
     if (badge) badge.classList.add('hidden');
     AuditPanel.page = 1;
@@ -4401,6 +4436,7 @@ const AuditPanel = {
   },
 
   _dateFilter: null,
+  _slotFilter: null,
 };
 
 // ================================================================
@@ -4614,6 +4650,7 @@ function applyFilters() {
     return m && s && c;
   });
   AuditPanel._dateFilter = null; // Clear day filter when global filters change
+  AuditPanel._slotFilter = null;
   AuditPanel.convenioFilter = 'all';
   const aSel = document.getElementById('auditConvenioFilter');
   if (aSel) aSel.value = 'all';
