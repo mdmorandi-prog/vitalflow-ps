@@ -2282,10 +2282,202 @@ const PrintCharts = {
     const img = canvas.toDataURL('image/png');
     chart.destroy();
     return img;
+  },
+
+  sectorTimes(kpis) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+    const items = [
+      { label: 'Sala Vermelha', val: kpis.avgSalaV, color: '#9B1C1C' },
+      { label: 'Soroterapia', val: kpis.avgSorot, color: '#0F2942' },
+      { label: 'Sutura', val: kpis.avgSutura, color: '#B45309' }
+    ].filter(x => x.val !== null && x.val > 0);
+    if (!items.length) return '';
+
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      plugins: [printBgPlugin],
+      data: {
+        labels: items.map(x => x.label),
+        datasets: [{
+          label: 'Tempo Médio',
+          data: items.map(x => x.val),
+          backgroundColor: items.map(x => x.color),
+          borderRadius: 5,
+          barPercentage: 0.55
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            display: true,
+            anchor: 'end',
+            align: 'right',
+            color: '#0F172A',
+            font: { family: 'Inter', size: 12, weight: 'bold' },
+            formatter: v => U.fmtMin(v)
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            suggestedMax: Math.max(...items.map(x => x.val)) * 1.18,
+            ticks: { color: '#475569', font: { family: 'Inter', size: 11 }, callback: v => U.fmtMinShort(v) },
+            grid: { color: '#E2E8F0' }
+          },
+          y: {
+            ticks: { color: '#0F172A', font: { family: 'Inter', size: 12, weight: '600' } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+    const img = canvas.toDataURL('image/png');
+    chart.destroy();
+    return img;
+  },
+
+  convenioWait(kpis) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 420;
+    const ctx = canvas.getContext('2d');
+    const list = (kpis.convenioStats || [])
+      .filter(c => c.avgWait !== null)
+      .sort((a, b) => b.avgWait - a.avgWait)
+      .slice(0, 12);
+    if (!list.length) return '';
+
+    const maxVal = Math.max(...list.map(c => c.avgWait), 30);
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      plugins: [printBgPlugin],
+      data: {
+        labels: list.map(c => c.name.length > 28 ? c.name.slice(0, 26) + '…' : c.name),
+        datasets: [{
+          label: 'Espera Média (Ficha → Médico)',
+          data: list.map(c => c.avgWait),
+          backgroundColor: list.map(c => c.avgWait > 90 ? '#9B1C1C' : c.avgWait > 45 ? '#B45309' : '#0F2942'),
+          borderRadius: 4,
+          barPercentage: 0.72
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            display: true,
+            anchor: 'end',
+            align: 'right',
+            color: '#0F172A',
+            font: { family: 'Inter', size: 11, weight: 'bold' },
+            formatter: v => U.fmtMinShort(v)
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            suggestedMax: Math.ceil(maxVal * 1.16),
+            ticks: { color: '#475569', font: { family: 'Inter', size: 11 }, callback: v => U.fmtMinShort(v) },
+            grid: { color: '#E2E8F0' }
+          },
+          y: {
+            ticks: { color: '#0F172A', font: { family: 'Inter', size: 11, weight: '600' } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+    const img = canvas.toDataURL('image/png');
+    chart.destroy();
+    return img;
   }
 };
 
 const PrintEngine = {
+  buildFilterLabel() {
+    const parts = [];
+    const c = State.filters.convenio || 'TODOS';
+    if (c === 'TODOS') parts.push('Todos os Convênios');
+    else if (c === 'TIPO:SUS' || c === 'SUS') parts.push('Apenas SUS');
+    else if (c === 'TIPO:CONVÊNIOS' || c === 'CONVÊNIOS') parts.push('Todos os Privados / Convênios');
+    else if (c.startsWith('OP:')) parts.push(c.slice(3));
+    else parts.push(c);
+
+    if (State.filters.specialty && State.filters.specialty !== 'all') {
+      parts.push(State.filters.specialty);
+    }
+    if (State.filters.month && State.filters.month !== 'all') {
+      parts.push(CONFIG.MONTHS[+State.filters.month - 1] || '');
+    }
+    return parts.filter(Boolean).join(' · ');
+  },
+
+  buildDestinationTable(kpis) {
+    const list = (kpis.destinationStats || []).filter(d => d.name !== 'Não Informado').slice(0, 10);
+    if (!list.length) return '<p class="empty-msg">Sem dados de desfecho registrados.</p>';
+    const rows = list.map(d => `<tr>
+      <td><strong>${d.name}</strong></td>
+      <td class="num">${d.count.toLocaleString('pt-BR')}</td>
+      <td class="num"><strong>${d.pct}%</strong></td>
+      <td class="num">${d.avgWait !== null ? U.fmtMin(d.avgWait) : '—'}</td>
+    </tr>`).join('');
+    return `<table class="data-table">
+      <thead>
+        <tr>
+          <th>Desfecho / Destino</th>
+          <th class="num">Pacientes</th>
+          <th class="num">% do Total</th>
+          <th class="num">Espera Média</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  },
+
+  buildConvenioTable(kpis) {
+    const list = kpis.convenioStats || [];
+    if (!list.length) return '<p class="empty-msg">Sem dados de convênio disponíveis.</p>';
+    const rows = list.map((c, idx) => {
+      const waitCls = c.avgWait === null ? '' : c.avgWait > 90 ? 'time-bad' : c.avgWait > 45 ? 'time-warn' : 'time-good';
+      return `<tr>
+        <td class="rank-cell">${idx + 1}</td>
+        <td class="spec-cell"><strong>${c.name}</strong></td>
+        <td class="num">${c.count.toLocaleString('pt-BR')}</td>
+        <td class="num muted">${c.pct}%</td>
+        <td class="num ${waitCls}">${c.avgWait !== null ? U.fmtMin(c.avgWait) : '—'}</td>
+        <td class="num">${c.avgStay !== null ? U.fmtMin(c.avgStay) : '—'}</td>
+        <td class="num">${c.waitGt60Pct}%</td>
+        <td class="num">${c.internRate}%</td>
+      </tr>`;
+    }).join('');
+    return `<table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:24pt;">#</th>
+          <th>Convênio / Operadora</th>
+          <th class="num">Atend.</th>
+          <th class="num">% Vol.</th>
+          <th class="num">Espera Méd.</th>
+          <th class="num">Permanência</th>
+          <th class="num">&gt; 1h</th>
+          <th class="num">Intern.</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  },
   buildPeriodInfo(data, kpis) {
     const months = [...new Set(data.map(d => d.month))].sort((a, b) => a - b);
     const firstM = CONFIG.MONTHS_SHORT[(months[0] || 1) - 1];
@@ -2628,6 +2820,8 @@ const PrintEngine = {
         const daily = KPI.dailyEvolution(currentData);
 
         const oeeGaugeImg = PrintCharts.oeeGauge(oee.score);
+        const sectorTimesImg = PrintCharts.sectorTimes(kpis);
+        const convenioWaitImg = PrintCharts.convenioWait(kpis);
         const monthlyImg = PrintCharts.monthly(kpis, baseKpis);
         const dailyImg = PrintCharts.daily(daily);
         const weekdayImg = PrintCharts.weekday(currentData);
@@ -2635,10 +2829,13 @@ const PrintEngine = {
         const paretoImg = PrintCharts.pareto(kpis);
 
         const periodClean = this.buildPeriodInfo(currentData, kpis);
+        const filterLabel = this.buildFilterLabel();
         const issuedAt = `${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
         const seasonText = document.getElementById('capacitySeasonFactor')?.options[document.getElementById('capacitySeasonFactor')?.selectedIndex]?.text || 'Cenário: Normal (1.0x)';
 
         const scorecardHTML = this.buildScorecardTable(kpis, currentData);
+        const destinationTableHTML = this.buildDestinationTable(kpis);
+        const convenioTableHTML = this.buildConvenioTable(kpis);
         const distributionTableHTML = this.buildDistributionTable(currentData);
         const specialtyTableHTML = this.buildSpecialtyTable(kpis);
         const worstDaysTableHTML = this.buildWorstDaysTable(currentData);
@@ -2842,7 +3039,6 @@ const PrintEngine = {
       display: flex;
       align-items: center;
       gap: 8pt;
-      margin-bottom: 7pt;
     }
     .oee-title {
       font-size: 9pt;
@@ -2860,28 +3056,29 @@ const PrintEngine = {
       background: #F8FAFC;
       color: #0F2942;
     }
-    .oee-bars {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10pt;
-    }
-    .oee-bar-col { font-size: 8pt; color: #475569; }
-    .oee-bar-col strong { color: #0F172A; font-variant-numeric: tabular-nums; }
-    .oee-track {
-      height: 4.5pt;
-      background: #E2E8F0;
-      border-radius: 2pt;
-      margin: 3pt 0;
-      overflow: hidden;
-    }
-    .oee-fill { height: 100%; background: #0F2942; }
 
-    /* KPI 3x2 Grid */
+    /* KPI Grids (4x2 principal + 3x1 / 4x1 fluxo) */
     .kpi-grid {
       display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7pt;
+      margin-bottom: 11pt;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .kpi-grid-3 {
+      display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8pt;
-      margin-bottom: 12pt;
+      gap: 7pt;
+      margin-bottom: 8pt;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .kpi-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7pt;
+      margin-bottom: 10pt;
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -2890,36 +3087,36 @@ const PrintEngine = {
       overflow: hidden;
       border: 1px solid #E2E8F0;
       border-radius: 5pt;
-      padding: 8pt 10pt 8pt 13pt;
+      padding: 7pt 9pt 7pt 12pt;
       background: #FFFFFF;
     }
     .kpi-box::before {
       content: '';
       position: absolute;
       top: 0; bottom: 0; left: 0;
-      width: 3.5pt;
+      width: 3pt;
       background: #0F2942;
     }
     .kpi-box.status-good::before { background: #166534; }
     .kpi-box.status-warn::before { background: #B45309; }
     .kpi-box.status-bad::before  { background: #9B1C1C; }
     .kpi-label {
-      font-size: 7.5pt;
+      font-size: 6.9pt;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.35px;
+      letter-spacing: 0.3px;
       color: #475569;
       margin-bottom: 3pt;
     }
     .kpi-val {
-      font-size: 14.5pt;
+      font-size: 13.5pt;
       font-weight: 800;
       color: #0F172A;
       font-variant-numeric: tabular-nums;
       line-height: 1.15;
     }
     .kpi-meta {
-      font-size: 7.5pt;
+      font-size: 7.2pt;
       color: #64748B;
       margin-top: 2pt;
       font-variant-numeric: tabular-nums;
@@ -2957,6 +3154,13 @@ const PrintEngine = {
     .chart-img {
       width: 100%;
       max-height: 76mm;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+    .chart-img-sm {
+      width: 100%;
+      max-height: 58mm;
       object-fit: contain;
       display: block;
       margin: 0 auto;
@@ -3110,20 +3314,65 @@ const PrintEngine = {
     }
     .si-body strong { color: #0F172A; }
 
+    .preview-bar { display: none; }
+
     @media screen {
-      body { background: #F1F5F9; padding: 14mm 0; }
+      body { background: #E2E8F0; padding: 18mm 12px 18mm; }
+      .preview-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 44px;
+        padding: 0 20px;
+        background: #0F2942;
+        color: #FFFFFF;
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 2px 10px rgba(15, 41, 66, 0.2);
+        z-index: 9999;
+      }
+      .preview-bar-actions { display: flex; gap: 8px; }
+      .preview-btn {
+        border: none;
+        border-radius: 5px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .preview-btn-primary { background: #FFFFFF; color: #0F2942; }
+      .preview-btn-primary:hover { background: #F1F5F9; }
+      .preview-btn-secondary { background: rgba(255,255,255,0.14); color: #FFFFFF; }
+      .preview-btn-secondary:hover { background: rgba(255,255,255,0.24); }
       .doc-shell {
         background: #FFFFFF;
         padding: 15mm;
         border: 1px solid #CBD5E1;
+        border-radius: 6px;
+        box-shadow: 0 8px 30px rgba(15, 41, 66, 0.12);
+      }
+      .page-break {
+        border-top: 2px dashed #CBD5E1;
+        padding-top: 14pt;
+        margin-top: 18pt;
       }
     }
   </style>
 </head>
 <body>
+<div class="preview-bar">
+  <span>Pré-visualização A4 — Hospital São Carlos · VitalFlow PS</span>
+  <div class="preview-bar-actions">
+    <button class="preview-btn preview-btn-primary" onclick="window.print()">Imprimir / Salvar PDF</button>
+    <button class="preview-btn preview-btn-secondary" onclick="window.close()">Fechar</button>
+  </div>
+</div>
 <div class="doc-shell">
 
-  <!-- ==================== PÁGINA 1: CABEÇALHO + OEE + 6 KPIS + SCORECARD ==================== -->
+  <!-- ==================== PÁGINA 1: CABEÇALHO + OEE + 8 KPIS + SCORECARD ==================== -->
   <header class="doc-header">
     <div class="doc-brand">
       <div class="doc-logo">
@@ -3138,8 +3387,8 @@ const PrintEngine = {
     </div>
     <div class="doc-meta">
       <div><strong>Período:</strong> ${periodClean}</div>
-      <div><strong>Volume:</strong> ${kpis.total.toLocaleString('pt-BR')} atendimentos</div>
-      <div><strong>Emissão:</strong> ${issuedAt}</div>
+      <div><strong>Recorte:</strong> ${filterLabel}</div>
+      <div><strong>Volume:</strong> ${kpis.total.toLocaleString('pt-BR')} atendimentos · <strong>Emissão:</strong> ${issuedAt}</div>
     </div>
   </header>
 
@@ -3161,26 +3410,36 @@ const PrintEngine = {
     </div>
 
     <div class="kpi-grid">
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Ficha &rarr; Triagem</div>
+        <div class="kpi-val">${kpis.avgTriageWait !== null ? U.fmtMin(kpis.avgTriageWait) : '—'}</div>
+        <div class="kpi-meta">Média Recepção</div>
+      </div>
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Triagem &rarr; Médico</div>
+        <div class="kpi-val">${kpis.avgTriageToDocWait !== null ? U.fmtMin(kpis.avgTriageToDocWait) : '—'}</div>
+        <div class="kpi-meta">Média Espera Médica</div>
+      </div>
       <div class="kpi-box status-${kpis.avgWait <= 30 ? 'good' : kpis.avgWait <= 40 ? 'warn' : 'bad'}">
-        <div class="kpi-label">Tempo Médio de Espera</div>
+        <div class="kpi-label">Ficha &rarr; Médico</div>
         <div class="kpi-val">${U.fmtMin(kpis.avgWait)}</div>
       </div>
       <div class="kpi-box status-${kpis.compliance >= 80 ? 'good' : kpis.compliance >= 70 ? 'warn' : 'bad'}">
-        <div class="kpi-label">Conformidade (&le; 30 min)</div>
+        <div class="kpi-label">Conformidade (&le; 30m)</div>
         <div class="kpi-val">${kpis.compliance.toFixed(1)}%</div>
       </div>
       <div class="kpi-box status-${kpis.avgStay <= 240 ? 'good' : kpis.avgStay <= 300 ? 'warn' : 'bad'}">
-        <div class="kpi-label">Permanência Média</div>
+        <div class="kpi-label">Permanência Total</div>
         <div class="kpi-val">${U.fmtMin(kpis.avgStay)}</div>
       </div>
       <div class="kpi-box status-neutral">
-        <div class="kpi-label">Total de Atendimentos</div>
+        <div class="kpi-label">Total Atendimentos</div>
         <div class="kpi-val">${kpis.total.toLocaleString('pt-BR')}</div>
         <div class="kpi-meta">Média: ${kpis.avgDaily.toLocaleString('pt-BR')}/dia</div>
       </div>
       <div class="kpi-box status-neutral">
         <div class="kpi-label">Horário de Pico</div>
-        <div class="kpi-val">${kpis.peakHour !== null ? String(kpis.peakHour).padStart(2, '0') + ':00' : '—'}</div>
+        <div class="kpi-val">${kpis.peakHour !== null ? String(kpis.peakHour).padStart(2, '0') + ':00h' : '—'}</div>
         <div class="kpi-meta">${kpis.peakVol.toLocaleString('pt-BR')} atendimentos</div>
       </div>
       <div class="kpi-box status-good">
@@ -3196,10 +3455,85 @@ const PrintEngine = {
     </div>
   </section>
 
-  <!-- ==================== SEÇÃO 2: TENDÊNCIA MENSAL ==================== -->
+  <!-- ==================== SEÇÃO 2: FLUXO ASSISTENCIAL POR SETOR & DESFECHOS ==================== -->
   <section class="section page-break">
     <div class="section-head">
-      <h2>2. Tendência Mensal de Espera e Conformidade</h2>
+      <h2>2. Fluxo Assistencial por Setor e Desfechos</h2>
+      <span>Tempos por setor clínico e desfechos de atendimento</span>
+    </div>
+
+    <div class="kpi-grid-3">
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Tempo Médio Sala Vermelha</div>
+        <div class="kpi-val">${kpis.avgSalaV !== null ? U.fmtMin(kpis.avgSalaV) : '—'}</div>
+        <div class="kpi-meta">${kpis.salaVCount > 0 ? kpis.salaVCount.toLocaleString('pt-BR') + ' casos' : 'Sem dados'}</div>
+      </div>
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Tempo Médio Soroterapia</div>
+        <div class="kpi-val">${kpis.avgSorot !== null ? U.fmtMin(kpis.avgSorot) : '—'}</div>
+        <div class="kpi-meta">${kpis.sorotCount > 0 ? kpis.sorotCount.toLocaleString('pt-BR') + ' casos' : 'Sem dados'}</div>
+      </div>
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Tempo Médio Sutura</div>
+        <div class="kpi-val">${kpis.avgSutura !== null ? U.fmtMin(kpis.avgSutura) : '—'}</div>
+        <div class="kpi-meta">${kpis.suturaCount > 0 ? kpis.suturaCount.toLocaleString('pt-BR') + ' casos' : 'Sem dados'}</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid-4">
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Taxa de Internação</div>
+        <div class="kpi-val">${kpis.internRate !== null ? kpis.internRate + '%' : '—'}</div>
+        <div class="kpi-meta">Pacientes internados</div>
+      </div>
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Taxa de Evasão</div>
+        <div class="kpi-val">${kpis.evasionRate !== null ? kpis.evasionRate + '%' : '—'}</div>
+        <div class="kpi-meta">Desistência de atendimento</div>
+      </div>
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Alta Domiciliar</div>
+        <div class="kpi-val">${kpis.homeRate !== null ? kpis.homeRate + '%' : '—'}</div>
+        <div class="kpi-meta">Pacientes com alta</div>
+      </div>
+      <div class="kpi-box status-neutral">
+        <div class="kpi-label">Taxa de Mortalidade PS</div>
+        <div class="kpi-val">${kpis.deathRate !== null ? kpis.deathRate + '%' : '—'}</div>
+        <div class="kpi-meta">Óbitos no setor</div>
+      </div>
+    </div>
+
+    ${sectorTimesImg ? `<div class="card">
+      <h3>Tempos Médios por Setor Clínico</h3>
+      <img src="${sectorTimesImg}" class="chart-img-sm" alt="Tempos por Setor Clínico">
+    </div>` : ''}
+
+    <div class="card">
+      <h3>Distribuição de Desfechos do Atendimento</h3>
+      ${destinationTableHTML}
+    </div>
+  </section>
+
+  <!-- ==================== SEÇÃO 3: DESEMPENHO POR CONVÊNIO / OPERADORA ==================== -->
+  ${kpis.convenioStats?.length ? `<section class="section page-break">
+    <div class="section-head">
+      <h2>3. Desempenho por Convênio / Operadora</h2>
+      <span>${kpis.convenioStats.length} ${kpis.convenioStats.length === 1 ? 'operadora' : 'operadoras'} no recorte</span>
+    </div>
+    ${convenioWaitImg ? `<div class="card">
+      <h3>Espera Média por Operadora (Ficha &rarr; Médico)</h3>
+      <img src="${convenioWaitImg}" class="chart-img-sm" alt="Espera Média por Convênio">
+    </div>` : ''}
+    <div class="card-flow">
+      <h3>Ranking Comparativo por Convênio / Operadora</h3>
+      ${convenioTableHTML}
+    </div>
+  </section>` : ''}
+
+  <!-- ==================== SEÇÃO 4: TENDÊNCIA MENSAL ==================== -->
+  <section class="section page-break">
+    <div class="section-head">
+      <h2>4. Tendência Mensal de Espera e Conformidade</h2>
       <span>${periodClean}</span>
     </div>
     <div class="card">
@@ -3210,10 +3544,10 @@ const PrintEngine = {
     </div>
   </section>
 
-  <!-- ==================== SEÇÃO 3: EVOLUÇÃO DIÁRIA & TOP 10 DIAS CRÍTICOS ==================== -->
+  <!-- ==================== SEÇÃO 5: EVOLUÇÃO DIÁRIA & TOP 10 DIAS CRÍTICOS ==================== -->
   <section class="section page-break">
     <div class="section-head">
-      <h2>3. Evolução Diária e Top 10 Dias Críticos</h2>
+      <h2>5. Evolução Diária e Top 10 Dias Críticos</h2>
       <span>Volume diário e espera média (média móvel 7 dias)</span>
     </div>
     <div class="card">
@@ -3225,10 +3559,10 @@ const PrintEngine = {
     </div>
   </section>
 
-  <!-- ==================== SEÇÃO 4 & 5: DISTRIBUIÇÃO + GARGALOS & ESPECIALIDADES ==================== -->
+  <!-- ==================== SEÇÃO 6: DISTRIBUIÇÃO ==================== -->
   <section class="section page-break">
     <div class="section-head">
-      <h2>4. Distribuição dos Tempos de Espera</h2>
+      <h2>6. Distribuição dos Tempos de Espera</h2>
       <span>Percentual de atendimentos por faixa de espera</span>
     </div>
     <div class="card">
@@ -3240,9 +3574,10 @@ const PrintEngine = {
     </div>
   </section>
 
+  <!-- ==================== SEÇÃO 7: GARGALOS & ESPECIALIDADES ==================== -->
   <section class="section page-break">
     <div class="section-head">
-      <h2>5. Gargalos Operacionais (80/20) e Especialidades</h2>
+      <h2>7. Gargalos Operacionais (80/20) e Especialidades</h2>
       <span>Concentração de horas acumuladas de espera</span>
     </div>
     <div class="card">
@@ -3254,10 +3589,10 @@ const PrintEngine = {
     </div>
   </section>
 
-  <!-- ==================== SEÇÃO 6: CAPACIDADE & TURNOS ==================== -->
+  <!-- ==================== SEÇÃO 8: CAPACIDADE & TURNOS ==================== -->
   <section class="section page-break">
     <div class="section-head">
-      <h2>6. Demanda por Dia da Semana e Dimensionamento por Turno</h2>
+      <h2>8. Demanda por Dia da Semana e Dimensionamento por Turno</h2>
       <span>${seasonText}</span>
     </div>
     <div class="card">
@@ -3270,10 +3605,10 @@ const PrintEngine = {
     </div>
   </section>
 
-  <!-- ==================== SEÇÃO 7: PANORAMA & DIAS FORA DO PADRÃO (JUNTOS NA MESMA PÁGINA) ==================== -->
+  <!-- ==================== SEÇÃO 9: PANORAMA & DIAS FORA DO PADRÃO ==================== -->
   <section class="section page-break">
     <div class="section-head">
-      <h2>7. Panorama do Plantão e Dias Fora do Padrão</h2>
+      <h2>9. Panorama do Plantão e Dias Fora do Padrão</h2>
       <span>Síntese operacional e picos atípicos (&gt; 2<span style="text-transform:none">&sigma;</span>)</span>
     </div>
     <div class="card">
