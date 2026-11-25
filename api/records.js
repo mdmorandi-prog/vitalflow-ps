@@ -35,6 +35,7 @@ module.exports = async (req, res) => {
           waitTime: row.wait_time,
           stayTime: row.stay_time,
           tipoConvenio: row.tipo_convenio,
+          convenio: row.convenio || row.tipo_convenio || 'NÃO INFORMADO',
           weekOfMonth: row.week_of_month,
           destination: row.destination,
           exitHour: row.exit_hour,

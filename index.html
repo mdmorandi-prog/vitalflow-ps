@@ -710,6 +710,32 @@
           </div>
         </section>
 
+        <!-- ROW 8.5: Desempenho por Convênio / Operadora -->
+        <section class="bento-grid bento-row" id="convenioSection">
+          <div class="chart-card bento-span-5">
+            <div class="chart-header">
+              <div>
+                <h3>Espera Média por Convênio</h3>
+                <p>Comparativo de tempo ficha → médico por operadora</p>
+              </div>
+              <div class="chart-badge chart-badge-oxford">Operadoras</div>
+            </div>
+            <div class="chart-body" style="min-height: 320px;">
+              <canvas id="chartConvenioWait"></canvas>
+            </div>
+          </div>
+          <div class="chart-card bento-span-7">
+            <div class="chart-header">
+              <div>
+                <h3>Ranking &amp; Auditoria por Convênio</h3>
+                <p>Volume, tempos médios e acesso direto à auditoria de pacientes por operadora</p>
+              </div>
+              <span class="chart-badge chart-badge-green" id="convenioCountBadge">— operadoras</span>
+            </div>
+            <div id="convenioStatsTable" class="table-container" style="max-height: 360px; overflow-y: auto;"></div>
+          </div>
+        </section>
+
         <!-- ROW 9: Auditoria de Atendimentos -->
         <section class="bento-grid bento-row" style="margin-bottom: 24px;">
           <div class="chart-card bento-span-12" id="auditCard">
@@ -723,15 +749,19 @@
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                  Auditoria de Atendimentos
+                  Auditoria de Atendimentos por Convênio
                 </h3>
-                <p>Rastreabilidade individual de pacientes no período selecionado</p>
+                <p>Rastreabilidade individual de pacientes e tempos por operadora no período selecionado</p>
               </div>
 
               <!-- Local controls -->
               <div class="audit-controls">
-                <input type="text" id="auditSearchInput" placeholder="Buscar paciente por nome ou ID..."
-                  class="filter-select" title="Digite o nome ou ID do paciente para filtrar">
+                <select id="auditConvenioFilter" class="filter-select" title="Filtrar auditoria por convênio">
+                  <option value="all">Todos os Convênios</option>
+                </select>
+
+                <input type="text" id="auditSearchInput" placeholder="Buscar paciente, atendimento ou convênio..."
+                  class="filter-select" title="Digite o nome, atendimento ou convênio para filtrar">
 
                 <div class="audit-filters-group">
                   <button id="btnAuditAll" class="audit-filter-btn active">Todos</button>
@@ -739,6 +769,10 @@
                   <button id="btnAuditIntern" class="audit-filter-btn">Internação</button>
                   <button id="btnAuditEvasion" class="audit-filter-btn audit-filter-danger">Evasão</button>
                 </div>
+
+                <button id="btnExportAuditCSV" class="audit-filter-btn" title="Exportar lista filtrada para Excel (CSV)">
+                  Exportar CSV
+                </button>
 
                 <span class="audit-count-badge" id="auditCount">— registros</span>
 
@@ -905,7 +939,7 @@
       <div class="modal-body" style="padding-top: 16px;">
         <h4 id="auditPatientName" class="audit-modal-name">—</h4>
         <p class="audit-modal-meta">
-          Registro SUS: <span id="auditPatientId" class="audit-modal-id">—</span> &bull;
+          Atendimento: <span id="auditPatientId" class="audit-modal-id">—</span> &bull;
           Convênio: <span id="auditPatientConvenio" class="audit-modal-conv">—</span>
         </p>
 
@@ -959,7 +993,7 @@
           <div>
             <strong>Tempo de Espera:</strong> <span id="auditPatientWait"
               class="audit-meta-val tabular-num">—</span><br>
-            <strong>Status de Meta ANAHP:</strong> <span id="auditPatientCompliance" style="font-weight: 700;">—</span>
+            <strong>Permanência Total:</strong> <span id="auditPatientStay" class="audit-meta-val tabular-num">—</span>
           </div>
         </div>
       </div>
@@ -992,7 +1026,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 </body>
 
 </html>

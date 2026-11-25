@@ -202,39 +202,80 @@ const Parser = {
     });
   },
   rows(all) {
-    return all.slice(1).map(r=>{
-      if (!r||r.length<8||!r[2]?.trim()) return null;
-      const date = U.parseDate(r[2]);
-      if (!date||isNaN(date)) return null;
+    if (!all || all.length < 2) return [];
+    const headers = (all[0] || []).map(h => (h || '').replace(/^\uFEFF/, '').trim().toUpperCase());
+    const hasConvenioCols = headers.includes('CONVENIO') || headers.includes('COD_CONVENIO');
+    const off = hasConvenioCols ? 2 : 0;
+    const idx = (names, fallback) => {
+      for (const n of names) {
+        const i = headers.indexOf(n);
+        if (i !== -1) return i;
+      }
+      return fallback;
+    };
+
+    const iWeek  = idx(['SEMANA_MES'], 0);
+    const iDow   = idx(['DIA_SEMANA'], 1);
+    const iDate  = idx(['DATA'], 2);
+    const iId    = idx(['ATENDIMENTO'], 3);
+    const iTipo  = idx(['TIPO_CONVENIO'], 4);
+    const iConv  = hasConvenioCols ? idx(['CONVENIO'], 6) : -1;
+    const iName  = idx(['PACIENTE'], 5 + off);
+    const iSpec  = idx(['ESPECIALIDADE'], 6 + off);
+    const iDest  = idx(['DESTINO'], 7 + off);
+    const iEnt   = idx(['HORA_ENTRADA'], 8 + off);
+    const iExit  = idx(['HORA_SAIDA'], 9 + off);
+    const iTriW  = idx(['TEMPO_ESPERA_TRIAGEM'], 10 + off);
+    const iTriD  = idx(['TEMPO_TRIAGEM_ATE_MEDICO'], 11 + off);
+    const iWait  = idx(['TEMPO_TOTAL_FICHA_ATE_MEDICO', 'PACIENTE_TEMPO_FICHA_ATE_MEDICO'], 12 + off);
+    const iSV    = idx(['TEMPO_SALA_VERMELHA'], 13 + off);
+    const iSor   = idx(['TEMPO_SOROTERAPIA'], 14 + off);
+    const iSut   = idx(['TEMPO_SUTURA'], 15 + off);
+    const iStay  = idx(['TEMPO_PERMANENCIA_TOTAL', 'PACIENTE_TEMPO_PERMANENCIA_TOTAL'], 16 + off);
+    const iDayT  = idx(['TOTAL_ATEND_CONVENIO_DIA', 'TOTAL_ATEND_DIA', 'TOTAL_ATENDIMENTOS_DO_DIA'], 17 + off);
+    const iDMTW  = idx(['DIA_MED_ESPERA_TRIAGEM'], 18 + off);
+    const iDMTD  = idx(['DIA_MED_TRIAGEM_ATE_MEDICO'], 19 + off);
+    const iDMW   = idx(['DIA_MED_TOTAL_ATE_MEDICO', 'DIA_TEMPO_MED_FICHA_ATE_MEDICO'], 20 + off);
+    const iDMS   = idx(['DIA_MED_PERMANENCIA_TOTAL'], 21 + off);
+
+    return all.slice(1).map(r => {
+      if (!r || r.length < 8 || !r[iDate]?.trim()) return null;
+      const date = U.parseDate(r[iDate]);
+      if (!date || isNaN(date)) return null;
+      const rawTipo = r[iTipo]?.trim() || 'NÃO INFORMADO';
+      const tipoConvenio = /conv.nio/i.test(rawTipo) ? 'CONVÊNIOS' : rawTipo;
+      const rawConv = iConv !== -1 ? r[iConv]?.trim() : '';
+      const convenio = rawConv || tipoConvenio;
       // Normalise destination: strip BOM / encoding artifacts
-      const rawDest = r[7]?.trim() || null;
+      const rawDest = r[iDest]?.trim() || null;
       const destination = rawDest && rawDest !== '-' ? rawDest
         .replace(/.*bito.*/i, 'Óbito')
         .replace(/.*vas.o.*/i, 'Evasão')
         .replace(/.*ransfer.ncia.*/i, 'Transferência')
         .replace(/.*nterna..o.*/i, 'Internado') : null;
       return {
-        id:                r[3]?.trim()  || 'NÃO INFORMADO',
-        tipoConvenio:      r[4]?.trim()  || 'NÃO INFORMADO',
-        name:              r[5]?.trim()  || 'PACIENTE ANÔNIMO',
-        dow: U.normDOW(r[1]), date, month:date.getMonth()+1, day:date.getDate(), year:date.getFullYear(),
-        weekOfMonth:       +r[0] || null,
-        specialty:         r[6]?.trim()  || 'NÃO INFORMADO',
+        id:                r[iId]?.trim()   || 'NÃO INFORMADO',
+        tipoConvenio,
+        convenio,
+        name:              r[iName]?.trim() || 'PACIENTE ANÔNIMO',
+        dow: U.normDOW(r[iDow]), date, month: date.getMonth() + 1, day: date.getDate(), year: date.getFullYear(),
+        weekOfMonth:       +r[iWeek] || null,
+        specialty:         r[iSpec]?.trim() || 'NÃO INFORMADO',
         destination,
-        entryHour:         U.parseHour(r[8]),
-        exitHour:          U.parseHour(r[9]),
-        triageWait:        U.parseMin(r[10]),
-        triageToDocWait:   U.parseMin(r[11]),
-        waitTime:          U.parseMin(r[12]),
-        salaVermelhaTime:  U.parseMin(r[13]),
-        soroterapiaTime:   U.parseMin(r[14]),
-        suturaTime:        U.parseMin(r[15]),
-        stayTime:          U.parseMin(r[16]),
-        dayTotalAtt:       r[17] ? +r[17] : null,
-        dayMedTriageWait:  U.parseMin(r[18]),
-        dayMedTriageToDoc: U.parseMin(r[19]),
-        dayMedWait:        U.parseMin(r[20]),
-        dayMedStayTime:    U.parseMin(r[21]),
+        entryHour:         U.parseHour(r[iEnt]),
+        exitHour:          U.parseHour(r[iExit]),
+        triageWait:        U.parseMin(r[iTriW]),
+        triageToDocWait:   U.parseMin(r[iTriD]),
+        waitTime:          U.parseMin(r[iWait]),
+        salaVermelhaTime:  U.parseMin(r[iSV]),
+        soroterapiaTime:   U.parseMin(r[iSor]),
+        suturaTime:        U.parseMin(r[iSut]),
+        stayTime:          U.parseMin(r[iStay]),
+        dayTotalAtt:       r[iDayT] ? +r[iDayT] : null,
+        dayMedTriageWait:  U.parseMin(r[iDMTW]),
+        dayMedTriageToDoc: U.parseMin(r[iDMTD]),
+        dayMedWait:        U.parseMin(r[iDMW]),
+        dayMedStayTime:    U.parseMin(r[iDMS]),
       };
     }).filter(Boolean);
   },
@@ -309,6 +350,34 @@ const KPI = {
     const evasionRate = getRate(1, 'Evasão', 'Evasao');
     const homeRate = getRate(1, 'Casa', 'Alta', 'Alta Domiciliar', 'Retorno Ambulatorial');
     const deathRate = getRate(2, 'Óbito', 'Obito');
+
+    // Convenio / Operadora stats
+    const convMap = {};
+    data.forEach(d => {
+      const k = d.convenio || d.tipoConvenio || 'NÃO INFORMADO';
+      if (!convMap[k]) convMap[k] = { count: 0, waits: [], stays: [], triages: [], waitGt60: 0, intern: 0 };
+      const st = convMap[k];
+      st.count++;
+      if (d.waitTime !== null && d.waitTime >= 0) {
+        st.waits.push(d.waitTime);
+        if (d.waitTime > 60) st.waitGt60++;
+      }
+      if (d.stayTime !== null && d.stayTime >= 0) st.stays.push(d.stayTime);
+      if (d.triageWait !== null && d.triageWait >= 0) st.triages.push(d.triageWait);
+      const uDest = d.destination ? d.destination.toUpperCase() : '';
+      if (uDest === 'INTERNADO' || uDest === 'INTERNAÇÃO' || uDest === 'INTERNACAO') st.intern++;
+    });
+    const convenioStats = Object.entries(convMap).map(([name, st]) => ({
+      name,
+      count: st.count,
+      pct: data.length ? +(st.count / data.length * 100).toFixed(1) : 0,
+      avgWait: st.waits.length ? +U.avg(st.waits).toFixed(1) : null,
+      avgStay: st.stays.length ? +U.avg(st.stays).toFixed(1) : null,
+      avgTriage: st.triages.length ? +U.avg(st.triages).toFixed(1) : null,
+      waitGt60Pct: st.waits.length ? +(st.waitGt60 / st.waits.length * 100).toFixed(1) : 0,
+      internRate: st.count ? +(st.intern / st.count * 100).toFixed(1) : 0,
+    })).sort((a, b) => b.count - a.count);
+
     return {
       total:data.length, validWait:ww.length,
       avgWait:+avgWait.toFixed(1), avgStay:+avgStay.toFixed(1),
@@ -322,7 +391,7 @@ const KPI = {
       avgDaily:Math.round(data.length/(days.length||1)),
       totalDays:days.length,
       peakHour: peakEntry?+peakEntry[0]:null, peakVol: peakEntry?+peakEntry[1]:0,
-      monthStats, specialtyStats, bestMonth:best, worstMonth:worst,
+      monthStats, specialtyStats, convenioStats, bestMonth:best, worstMonth:worst,
       destinationStats, internRate, evasionRate, homeRate, deathRate,
     };
   },
@@ -659,6 +728,57 @@ const Charts = {
     }]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>[` Tempo: ${U.fmtMin(ctx.parsed.x)}`,` Volume: ${st[ctx.dataIndex].count.toLocaleString('pt-BR')}`,` Conform.: ${st[ctx.dataIndex].compliance.toFixed(1)}%`]}}},
       scales:{x:{...SX,ticks:{...SX.ticks,callback:v=>U.fmtMinShort(v)}},y:{ticks:{color:'#0F172A',font:{family:'Inter',size:11,weight:'500'}},grid:{display:false}}}}});
+  },
+
+  convenioWait(kpis) {
+    this.kill('convenioWait');
+    const ctx = document.getElementById('chartConvenioWait')?.getContext('2d');
+    if (!ctx || !kpis.convenioStats?.length) return;
+    const list = kpis.convenioStats
+      .filter(c => c.avgWait !== null)
+      .sort((a, b) => b.avgWait - a.avgWait)
+      .slice(0, 12);
+    if (!list.length) return;
+    const colors = list.map(c => c.avgWait > 90 ? '#B91C1C' : c.avgWait > 45 ? '#C27803' : '#0F2942');
+    State.charts.convenioWait = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: list.map(c => c.name.length > 24 ? c.name.slice(0, 22) + '…' : c.name),
+        datasets: [{
+          label: 'Espera Média',
+          data: list.map(c => c.avgWait),
+          backgroundColor: colors,
+          borderRadius: 4,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...TT,
+            callbacks: {
+              title: items => list[items[0].dataIndex].name,
+              label: ctx => {
+                const c = list[ctx.dataIndex];
+                return [
+                  ` Espera Média: ${U.fmtMin(c.avgWait)}`,
+                  ` Permanência Média: ${c.avgStay !== null ? U.fmtMin(c.avgStay) : '—'}`,
+                  ` Volume: ${c.count.toLocaleString('pt-BR')} (${c.pct}%)`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ...SX, ticks: { ...SX.ticks, callback: v => U.fmtMinShort(v) } },
+          y: { ticks: { color: '#0F172A', font: { family: 'Inter', size: 11, weight: '500' } }, grid: { display: false } }
+        }
+      }
+    });
   },
 
   distribution(data) {
@@ -3251,6 +3371,58 @@ const UI = {
     months.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=CONFIG.MONTHS[m-1]; mSel.appendChild(o); });
     sSel.innerHTML='<option value="all">Todas as Especialidades</option>';
     specs.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sSel.appendChild(o); });
+
+    // Super Filtro de Convênios (Visão Geral + Por Operadora)
+    const convCounts = {};
+    data.forEach(d => {
+      const k = (d.convenio || d.tipoConvenio || 'NÃO INFORMADO').trim();
+      convCounts[k] = (convCounts[k] || 0) + 1;
+    });
+    const sortedConvs = Object.entries(convCounts).sort((a, b) => b[1] - a[1]);
+
+    const cSel = document.getElementById('convenioFilter');
+    if (cSel) {
+      const prev = State.filters.convenio || 'TODOS';
+      cSel.innerHTML = '';
+      const grpGeneral = document.createElement('optgroup');
+      grpGeneral.label = 'Visão Geral';
+      [
+        ['TODOS', 'Todos os Convênios'],
+        ['TIPO:SUS', 'Apenas SUS'],
+        ['TIPO:CONVÊNIOS', 'Todos os Privados / Convênios']
+      ].forEach(([val, lbl]) => {
+        const o = document.createElement('option');
+        o.value = val; o.textContent = lbl;
+        grpGeneral.appendChild(o);
+      });
+      cSel.appendChild(grpGeneral);
+
+      if (sortedConvs.length > 0) {
+        const grpOps = document.createElement('optgroup');
+        grpOps.label = 'Por Operadora / Convênio';
+        sortedConvs.forEach(([name, cnt]) => {
+          const o = document.createElement('option');
+          o.value = `OP:${name}`;
+          o.textContent = `${name} (${cnt.toLocaleString('pt-BR')})`;
+          grpOps.appendChild(o);
+        });
+        cSel.appendChild(grpOps);
+      }
+      cSel.value = prev;
+      if (!cSel.value) cSel.value = 'TODOS';
+    }
+
+    // Filtro de Convênios local no Painel de Auditoria
+    const aSel = document.getElementById('auditConvenioFilter');
+    if (aSel) {
+      aSel.innerHTML = '<option value="all">Todos os Convênios</option>';
+      sortedConvs.forEach(([name, cnt]) => {
+        const o = document.createElement('option');
+        o.value = name;
+        o.textContent = `${name} (${cnt.toLocaleString('pt-BR')})`;
+        aSel.appendChild(o);
+      });
+    }
   },
   updatePeriod(data, label) {
     const months=[...new Set(data.map(d=>d.month))].sort((a,b)=>a-b);
@@ -3313,7 +3485,8 @@ const AuditPanel = {
   page: 1,
   pageSize: 15,
   searchQuery: '',
-  severityFilter: 'all', // 'all', 'warn' (>30m), 'critical' (>60m)
+  convenioFilter: 'all',
+  severityFilter: 'all', // 'all', 'warn' (>30m), 'intern', 'evasion'
 
   init() {
     // Search input event
@@ -3324,6 +3497,22 @@ const AuditPanel = {
         this.page = 1;
         this.render();
       });
+    }
+
+    // Local convenio filter event
+    const convSelect = document.getElementById('auditConvenioFilter');
+    if (convSelect) {
+      convSelect.addEventListener('change', (e) => {
+        this.convenioFilter = e.target.value;
+        this.page = 1;
+        this.render();
+      });
+    }
+
+    // Export CSV button
+    const btnExport = document.getElementById('btnExportAuditCSV');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => this.exportCSV());
     }
 
     // Severity and Destination buttons
@@ -3408,12 +3597,19 @@ const AuditPanel = {
         if (k !== this._dateFilter) return false;
       }
 
+      // 0b. Local convenio filter
+      if (this.convenioFilter && this.convenioFilter !== 'all') {
+        const recConv = (d.convenio || d.tipoConvenio || 'NÃO INFORMADO').toUpperCase();
+        if (recConv !== this.convenioFilter.toUpperCase()) return false;
+      }
+
       // 1. Text filter
       let matchText = true;
       if (this.searchQuery) {
         const name = d.name ? d.name.toLowerCase() : '';
         const id = d.id ? d.id.toLowerCase() : '';
-        matchText = name.includes(this.searchQuery) || id.includes(this.searchQuery);
+        const conv = (d.convenio || d.tipoConvenio || '').toLowerCase();
+        matchText = name.includes(this.searchQuery) || id.includes(this.searchQuery) || conv.includes(this.searchQuery);
       }
 
       // 2. Severity & Destination filter
@@ -3508,11 +3704,12 @@ const AuditPanel = {
       else if (upperDest.includes('ALTA')) destClass = 'dest-alta';
       else if (upperDest === 'EVASÃO' || upperDest === 'ÓBITO' || upperDest === 'EVASAO' || upperDest === 'OBITO') destClass = 'dest-evasion';
 
+      const convLabel = d.convenio || d.tipoConvenio || 'NÃO INFORMADO';
       html += `<tr data-index="${startIdx + i}">
         <td>
           <div class="patient-name-col">
             <span class="patient-name">${d.name || 'PACIENTE ANÔNIMO'}</span>
-            <span class="patient-spec">${d.specialty} &bull; ${d.tipoConvenio || 'NÃO INFORMADO'}</span>
+            <span class="patient-spec">${d.specialty} &bull; <strong style="color:var(--oxford)">${convLabel}</strong></span>
           </div>
         </td>
         <td style="font-family: monospace; font-size: 11px;">${formattedDate}</td>
@@ -3554,20 +3751,14 @@ const AuditPanel = {
     document.getElementById('auditPatientSpecialty').textContent = d.specialty;
     document.getElementById('auditPatientDow').textContent = d.dow;
     document.getElementById('auditPatientWait').textContent = U.fmtMin(d.waitTime);
+    const stayEl = document.getElementById('auditPatientStay');
+    if (stayEl) stayEl.textContent = U.fmtMin(d.stayTime);
 
-    // Compute meta compliance label
-    const complianceSpan = document.getElementById('auditPatientCompliance');
-    if (complianceSpan) {
-      if (d.waitTime <= CONFIG.ANAHP.waitTarget) {
-        complianceSpan.textContent = 'CONFORME (Meta ANAHP)';
-        complianceSpan.style.color = '#166534';
-      } else {
-        complianceSpan.textContent = 'NÃO CONFORME (Meta ANAHP)';
-        complianceSpan.style.color = '#B91C1C';
-      }
-    }
-
-    document.getElementById('auditPatientConvenio').textContent = d.tipoConvenio || 'NÃO INFORMADO';
+    const convName = d.convenio || d.tipoConvenio || 'NÃO INFORMADO';
+    const convText = (d.convenio && d.tipoConvenio && d.convenio.toUpperCase() !== d.tipoConvenio.toUpperCase())
+      ? `${d.convenio} (${d.tipoConvenio})`
+      : convName;
+    document.getElementById('auditPatientConvenio').textContent = convText;
 
     // 1. TIMELINE CALCULATIONS
     const steps = [];
@@ -3815,7 +4006,112 @@ const AuditPanel = {
     document.querySelectorAll('.cal-cell.cal-selected').forEach(c => c.classList.remove('cal-selected'));
   },
 
+  filterByConvenio(name) {
+    this.convenioFilter = name || 'all';
+    const sel = document.getElementById('auditConvenioFilter');
+    if (sel) sel.value = this.convenioFilter;
+    this.page = 1;
+    this.render();
+    document.getElementById('auditCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  exportCSV() {
+    const rows = this.getFilteredData();
+    if (!rows.length) {
+      UI.toast('Nenhum registro filtrado para exportar.', 'warning');
+      return;
+    }
+    const headers = [
+      'DATA', 'DIA_SEMANA', 'ATENDIMENTO', 'TIPO_CONVENIO', 'CONVENIO', 'PACIENTE',
+      'ESPECIALIDADE', 'DESTINO', 'HORA_ENTRADA', 'ESPERA_TRIAGEM', 'TRIAGEM_MEDICO',
+      'ESPERA_TOTAL_MEDICO', 'SALA_VERMELHA', 'SOROTERAPIA', 'SUTURA', 'PERMANENCIA_TOTAL'
+    ];
+    const esc = v => {
+      const s = (v === null || v === undefined ? '' : String(v)).replace(/"/g, '""');
+      return s.includes(';') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+    };
+    const lines = [headers.join(';')];
+    rows.forEach(d => {
+      lines.push([
+        U.fmtDate(d.date),
+        d.dow || '',
+        d.id || '',
+        d.tipoConvenio || '',
+        d.convenio || d.tipoConvenio || '',
+        d.name || '',
+        d.specialty || '',
+        d.destination || '',
+        d.entryHour !== null ? `${String(d.entryHour).padStart(2, '0')}:00` : '',
+        d.triageWait !== null ? U.fmtMin(d.triageWait) : '',
+        d.triageToDocWait !== null ? U.fmtMin(d.triageToDocWait) : '',
+        d.waitTime !== null ? U.fmtMin(d.waitTime) : '',
+        d.salaVermelhaTime !== null ? U.fmtMin(d.salaVermelhaTime) : '',
+        d.soroterapiaTime !== null ? U.fmtMin(d.soroterapiaTime) : '',
+        d.suturaTime !== null ? U.fmtMin(d.suturaTime) : '',
+        d.stayTime !== null ? U.fmtMin(d.stayTime) : ''
+      ].map(esc).join(';'));
+    });
+    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const convSlug = (this.convenioFilter !== 'all' ? this.convenioFilter : (State.filters.convenio || 'todos'))
+      .replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase();
+    a.href = url;
+    a.download = `auditoria_${convSlug}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    UI.toast(`✓ ${rows.length.toLocaleString('pt-BR')} registros exportados para CSV!`);
+  },
+
   _dateFilter: null,
+};
+
+// ================================================================
+// CONVENIO RANKING & AUDIT TABLE
+// ================================================================
+const ConvenioTable = {
+  render(kpis) {
+    const container = document.getElementById('convenioStatsTable');
+    const badge = document.getElementById('convenioCountBadge');
+    if (!container) return;
+    const list = kpis.convenioStats || [];
+    if (badge) badge.textContent = `${list.length} ${list.length === 1 ? 'operadora' : 'operadoras'}`;
+    if (!list.length) {
+      container.innerHTML = '<p style="padding:20px;text-align:center;color:var(--text-3);font-size:12.5px;">Sem dados de convênio disponíveis.</p>';
+      return;
+    }
+    const rowsHtml = list.map(c => {
+      const waitCls = c.avgWait === null ? '' : c.avgWait > 90 ? 'time-bad' : c.avgWait > 45 ? 'time-warn' : 'time-good';
+      const safeName = c.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<tr>
+        <td><strong>${c.name}</strong></td>
+        <td class="tabular-num" style="text-align:right;">${c.count.toLocaleString('pt-BR')} <span style="color:var(--text-3);font-size:11px;">(${c.pct}%)</span></td>
+        <td class="tabular-num ${waitCls}" style="text-align:right;font-weight:700;">${c.avgWait !== null ? U.fmtMin(c.avgWait) : '—'}</td>
+        <td class="tabular-num" style="text-align:right;">${c.avgStay !== null ? U.fmtMin(c.avgStay) : '—'}</td>
+        <td class="tabular-num" style="text-align:right;">${c.waitGt60Pct}%</td>
+        <td class="tabular-num" style="text-align:right;">${c.internRate}%</td>
+        <td style="text-align:right;">
+          <button class="audit-btn-view" onclick="AuditPanel.filterByConvenio('${safeName}')">Auditar</button>
+        </td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `<table class="data-table">
+      <thead>
+        <tr>
+          <th>Convênio / Operadora</th>
+          <th style="text-align:right;">Atendimentos</th>
+          <th style="text-align:right;">Espera Média</th>
+          <th style="text-align:right;">Permanência</th>
+          <th style="text-align:right;">&gt; 1h</th>
+          <th style="text-align:right;">Intern.</th>
+          <th style="text-align:right;">Auditoria</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  },
 };
 
 // ================================================================
@@ -3834,6 +4130,8 @@ function render(data, baseData) {
   if(baseData){ Charts.yoy([...data,...baseData], baseData); UI.setCompareMode(true); }
   else { UI.setCompareMode(false); }
   Charts.specialty(kpis);
+  Charts.convenioWait(kpis);
+  ConvenioTable.render(kpis);
   Charts.distribution(data);
   Charts.daily(daily);
   Charts.weekday(data);
@@ -3961,13 +4259,29 @@ const FlowPanel = {
 // ================================================================
 function applyFilters() {
   const { month, specialty, convenio } = State.filters;
-  State.filtered = State.data.filter(d=>{
-    const m = (month==='all'||d.month===+month);
-    const s = (specialty==='all'||d.specialty===specialty);
-    const c = (convenio==='TODOS' || d.tipoConvenio.toUpperCase()===convenio.toUpperCase());
+  State.filtered = State.data.filter(d => {
+    const m = (month === 'all' || d.month === +month);
+    const s = (specialty === 'all' || d.specialty === specialty);
+    let c = true;
+    if (convenio && convenio !== 'TODOS') {
+      const recTipo = (d.tipoConvenio || '').toUpperCase();
+      const recConv = (d.convenio || d.tipoConvenio || '').toUpperCase();
+      if (convenio === 'SUS' || convenio === 'TIPO:SUS') {
+        c = recTipo === 'SUS';
+      } else if (convenio === 'CONVÊNIOS' || convenio === 'TIPO:CONVÊNIOS') {
+        c = recTipo.includes('CONV');
+      } else if (convenio.startsWith('OP:')) {
+        c = recConv === convenio.slice(3).toUpperCase();
+      } else {
+        c = recConv === convenio.toUpperCase() || recTipo === convenio.toUpperCase();
+      }
+    }
     return m && s && c;
   });
   AuditPanel._dateFilter = null; // Clear day filter when global filters change
+  AuditPanel.convenioFilter = 'all';
+  const aSel = document.getElementById('auditConvenioFilter');
+  if (aSel) aSel.value = 'all';
   const badge = document.getElementById('auditDateFilterBadge');
   if (badge) badge.classList.add('hidden');
   render(State.filtered, State.baseData);
@@ -4016,9 +4330,11 @@ async function handleFile(file, isBase) {
       State.data=data;
       State.filtered=data;
       State.currentFilename=file.name;
-      State.filters={month:'all',specialty:'all'};
+      State.filters={month:'all',specialty:'all',convenio:'TODOS'};
       document.getElementById('filterMonth').value='all';
       document.getElementById('filterSpecialty').value='all';
+      const cSel=document.getElementById('convenioFilter');
+      if(cSel) cSel.value='TODOS';
       document.getElementById('currentLoadedLabel').textContent='✓';
       try {
         await DB.upload(data, false);

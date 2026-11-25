@@ -43,6 +43,7 @@ module.exports = async (req, res) => {
           stay_time INT,
           is_base BOOLEAN,
           tipo_convenio VARCHAR,
+          convenio VARCHAR,
           week_of_month INT,
           destination VARCHAR,
           exit_hour INT,
@@ -63,6 +64,7 @@ module.exports = async (req, res) => {
         'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS id VARCHAR',
         'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS name VARCHAR',
         'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS tipo_convenio VARCHAR',
+        'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS convenio VARCHAR',
         'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS week_of_month INT',
         'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS destination VARCHAR',
         'ALTER TABLE atendimentos ADD COLUMN IF NOT EXISTS exit_hour INT',
@@ -104,6 +106,7 @@ module.exports = async (req, res) => {
         
         // New fields
         const tipoConvenios = [];
+        const convenios = [];
         const weekOfMonths = [];
         const destinations = [];
         const exitHours = [];
@@ -132,6 +135,7 @@ module.exports = async (req, res) => {
           stayTimes.push(d.stayTime !== null && d.stayTime !== undefined ? parseInt(d.stayTime, 10) : null);
           
           tipoConvenios.push(d.tipoConvenio || 'NÃO INFORMADO');
+          convenios.push(d.convenio || d.tipoConvenio || 'NÃO INFORMADO');
           weekOfMonths.push(d.weekOfMonth !== null && d.weekOfMonth !== undefined ? parseInt(d.weekOfMonth, 10) : null);
           destinations.push(d.destination || null);
           exitHours.push(d.exitHour !== null && d.exitHour !== undefined ? parseInt(d.exitHour, 10) : null);
@@ -151,21 +155,21 @@ module.exports = async (req, res) => {
         const insertQuery = `
           INSERT INTO atendimentos (
             id, name, dow, date, month, day, year, specialty, entry_hour, wait_time, stay_time, is_base,
-            tipo_convenio, week_of_month, destination, exit_hour, triage_wait, triage_to_doc_wait,
+            tipo_convenio, convenio, week_of_month, destination, exit_hour, triage_wait, triage_to_doc_wait,
             sala_vermelha_time, soroterapia_time, sutura_time, day_total_att, day_med_triage_wait,
             day_med_triage_to_doc, day_med_wait, day_med_stay_time
           )
           SELECT * FROM UNNEST(
             $1::varchar[], $2::varchar[], $3::varchar[], $4::timestamptz[], $5::int[], $6::int[], 
             $7::int[], $8::varchar[], $9::int[], $10::int[], $11::int[], $12::boolean[],
-            $13::varchar[], $14::int[], $15::varchar[], $16::int[], $17::int[], $18::int[],
-            $19::int[], $20::int[], $21::int[], $22::int[], $23::int[], $24::int[], $25::int[], $26::int[]
+            $13::varchar[], $14::varchar[], $15::int[], $16::varchar[], $17::int[], $18::int[], $19::int[],
+            $20::int[], $21::int[], $22::int[], $23::int[], $24::int[], $25::int[], $26::int[], $27::int[]
           );
         `;
 
         const values = [
           ids, names, dows, dates, months, days, years, specialties, entryHours, waitTimes, stayTimes, isBases,
-          tipoConvenios, weekOfMonths, destinations, exitHours, triageWaits, triageToDocWaits,
+          tipoConvenios, convenios, weekOfMonths, destinations, exitHours, triageWaits, triageToDocWaits,
           salaVermelhaTimes, soroterapiaTimes, suturaTimes, dayTotalAtts, dayMedTriageWaits,
           dayMedTriageToDocs, dayMedWaits, dayMedStayTimes
         ];
