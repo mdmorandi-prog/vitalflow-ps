@@ -33,7 +33,21 @@ module.exports = async (req, res) => {
           specialty: row.specialty,
           entryHour: row.entry_hour,
           waitTime: row.wait_time,
-          stayTime: row.stay_time
+          stayTime: row.stay_time,
+          tipoConvenio: row.tipo_convenio,
+          weekOfMonth: row.week_of_month,
+          destination: row.destination,
+          exitHour: row.exit_hour,
+          triageWait: row.triage_wait,
+          triageToDocWait: row.triage_to_doc_wait,
+          salaVermelhaTime: row.sala_vermelha_time,
+          soroterapiaTime: row.soroterapia_time,
+          suturaTime: row.sutura_time,
+          dayTotalAtt: row.day_total_att,
+          dayMedTriageWait: row.day_med_triage_wait,
+          dayMedTriageToDoc: row.day_med_triage_to_doc,
+          dayMedWait: row.day_med_wait,
+          dayMedStayTime: row.day_med_stay_time
         };
 
         if (row.is_base) {
