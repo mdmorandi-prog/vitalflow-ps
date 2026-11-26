@@ -121,6 +121,21 @@ const U = {
     const m = str.toString().match(/^(\d{1,2}):/);
     return m ? +m[1] : null;
   },
+  parseTime(str) {
+    if (!str) return null;
+    const m = str.toString().trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    const h = +m[1], min = +m[2];
+    if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+  },
+  timeToMin(timeStr, fallbackHour = null) {
+    if (timeStr) {
+      const m = timeStr.toString().trim().match(/^(\d{1,2}):(\d{2})/);
+      if (m) return (+m[1]) * 60 + (+m[2]);
+    }
+    return fallbackHour !== null && fallbackHour !== undefined ? fallbackHour * 60 : null;
+  },
   normDOW(raw) {
     if (!raw) return '';
     const s = raw.trim();
@@ -263,7 +278,9 @@ const Parser = {
         specialty:         r[iSpec]?.trim() || 'NÃO INFORMADO',
         destination,
         entryHour:         U.parseHour(r[iEnt]),
+        entryTime:         U.parseTime(r[iEnt]),
         exitHour:          U.parseHour(r[iExit]),
+        exitTime:          U.parseTime(r[iExit]),
         triageWait:        U.parseMin(r[iTriW]),
         triageToDocWait:   U.parseMin(r[iTriD]),
         waitTime:          U.parseMin(r[iWait]),
@@ -4028,7 +4045,8 @@ const AuditPanel = {
       }
 
       // Format Date/Time
-      const formattedDate = U.fmtDate(d.date) + '<br/><span style="color:#64748B;">' + (d.entryHour !== null ? `${String(d.entryHour).padStart(2, '0')}:00` : '--:--') + '</span>';
+      const entryDisplay = d.entryTime || (d.entryHour !== null ? `${String(d.entryHour).padStart(2, '0')}:00` : '--:--');
+      const formattedDate = U.fmtDate(d.date) + '<br/><span style="color:#64748B;">' + entryDisplay + '</span>';
 
       // Build Journey Tags
       let journeyHtml = '<div class="journey-tags">';
@@ -4106,12 +4124,13 @@ const AuditPanel = {
     // 1. TIMELINE CALCULATIONS
     const steps = [];
     let currentMin = 0;
-    const baseHour = d.entryHour !== null ? d.entryHour : 0;
+    const baseMin = U.timeToMin(d.entryTime, d.entryHour);
     
-    const formatTime = (totalMin) => {
-      if (d.entryHour === null) return '--:--';
-      const h = Math.floor((baseHour * 60 + totalMin) / 60) % 24;
-      const m = Math.round((baseHour * 60 + totalMin) % 60);
+    const formatTime = (offsetMin) => {
+      if (baseMin === null) return '--:--';
+      const total = Math.round(baseMin + offsetMin);
+      const h = ((Math.floor(total / 60) % 24) + 24) % 24;
+      const m = ((total % 60) + 60) % 60;
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     };
 
@@ -4185,10 +4204,7 @@ const AuditPanel = {
       else if (dest.includes('ALTA') || dest.includes('CASA')) destColor = '#2F855A';
       else if (dest === 'EVASÃO' || dest === 'ÓBITO' || dest === 'EVASAO' || dest === 'OBITO') destColor = '#B91C1C';
       
-      let outTime = formatTime(d.stayTime);
-      if (d.exitHour !== null && d.stayTime !== null) {
-         outTime = `${String(d.exitHour).padStart(2,'0')}:00`;
-      }
+      const outTime = d.exitTime || formatTime(Math.max(d.stayTime, currentMin));
       
       steps.push({
         label: d.destination || 'Desfecho',
@@ -4411,7 +4427,7 @@ const AuditPanel = {
         d.name || '',
         d.specialty || '',
         d.destination || '',
-        d.entryHour !== null ? `${String(d.entryHour).padStart(2, '0')}:00` : '',
+        d.entryTime || (d.entryHour !== null ? `${String(d.entryHour).padStart(2, '0')}:00` : ''),
         d.triageWait !== null ? U.fmtMin(d.triageWait) : '',
         d.triageToDocWait !== null ? U.fmtMin(d.triageToDocWait) : '',
         d.waitTime !== null ? U.fmtMin(d.waitTime) : '',
